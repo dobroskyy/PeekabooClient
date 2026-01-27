@@ -8,6 +8,7 @@
 import Foundation
 
 struct NetworkStatistics: Codable {
+    
     let uploadBytes: UInt64
     let downloadBytes: UInt64
     let timestamp: Date

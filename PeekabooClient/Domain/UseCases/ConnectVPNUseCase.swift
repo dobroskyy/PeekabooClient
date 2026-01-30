@@ -33,13 +33,7 @@ final class ConnectVPNUseCase: ConnectVPNUseCaseProtocol {
             throw VPNError.configurationInvalid
         }
         
-        do {
-            try await vpnService.connect(with: configuration)
-        } catch let error as VPNError {
-            throw error
-        } catch {
-            throw error
-        }
+        try await vpnService.connect(with: configuration)
         
     }
     

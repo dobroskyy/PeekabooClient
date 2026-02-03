@@ -10,7 +10,6 @@ import Combine
 
 protocol VPNServiceProtocol {
     var statusPublisher: AnyPublisher<VPNStatus, Never> { get }
-    var statisticsPublisher: AnyPublisher<NetworkStatistics, Never> { get }
     func getCurrentStatus() -> VPNStatus
     func connect(with configuration: VPNConfiguration) async throws
     func disconnect() async throws

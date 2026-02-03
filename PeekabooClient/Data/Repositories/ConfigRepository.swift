@@ -14,15 +14,17 @@ final class ConfigRepository: ConfigRepositoryProtocol {
     }
     
     private let keychain: KeychainManager
+    private let sharedDefaults: UserDefaults?
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     
     init(keychain: KeychainManager = .shared) {
         self.keychain = keychain
+        self.sharedDefaults = UserDefaults(suiteName: "group.dobrosky.PeekabooClient")
     }
     
     func getActiveConfiguration() async throws -> VPNConfiguration {
-        guard let activeId = UserDefaults.standard.string(forKey: Keys.activeConfigId) else {
+        guard let activeId = sharedDefaults?.string(forKey: Keys.activeConfigId) else {
             throw VPNError.configurationInvalid
         }
         
@@ -51,7 +53,7 @@ final class ConfigRepository: ConfigRepositoryProtocol {
         
         
         if configurations.count == 1 {
-            UserDefaults.standard.set(configuration.id, forKey: Keys.activeConfigId)
+            sharedDefaults?.set(configuration.id, forKey: Keys.activeConfigId)
         }
     }
     
@@ -75,14 +77,14 @@ final class ConfigRepository: ConfigRepositoryProtocol {
         
         if configurations.isEmpty {
             try keychain.delete(key: Keys.configurations)
-            UserDefaults.standard.removeObject(forKey: Keys.activeConfigId)
+            sharedDefaults?.removeObject(forKey: Keys.activeConfigId)
         } else {
             let data = try encoder.encode(configurations)
             try keychain.save(data, forKey: Keys.configurations)
             
-            let activeId = UserDefaults.standard.string(forKey: Keys.activeConfigId)
+            let activeId = sharedDefaults?.string(forKey: Keys.activeConfigId)
             if activeId == id {
-                UserDefaults.standard.set(configurations.first?.id, forKey: Keys.activeConfigId)
+                sharedDefaults?.set(configurations.first?.id, forKey: Keys.activeConfigId)
             }
         }
     }

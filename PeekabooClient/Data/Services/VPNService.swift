@@ -14,16 +14,11 @@ final class VPNService: VPNServiceProtocol {
     private var manager: NETunnelProviderManager?
     
     private let statusSubject = CurrentValueSubject<VPNStatus, Never>(.disconnected)
-    private let statisticsSubject = CurrentValueSubject<NetworkStatistics, Never>(.zero)
     
     private var cancellables = Set<AnyCancellable>()
     
     var statusPublisher: AnyPublisher<VPNStatus, Never> {
         statusSubject.eraseToAnyPublisher()
-    }
-    
-    var statisticsPublisher: AnyPublisher<NetworkStatistics, Never> {
-        statisticsSubject.eraseToAnyPublisher()
     }
     
     init() {
@@ -81,7 +76,7 @@ final class VPNService: VPNServiceProtocol {
         let newManager = NETunnelProviderManager()
 
         let protocolConfig = NETunnelProviderProtocol()
-        protocolConfig.providerBundleIdentifier = "com.dobrosky.PeekabooClient.NetworkExtension"
+        protocolConfig.providerBundleIdentifier = "com.dobrosky.PeekabooClient.PacketTunnelExtension"
         protocolConfig.serverAddress = configuration.serverAddress
         
         let configData = try JSONEncoder().encode(configuration)

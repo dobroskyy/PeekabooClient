@@ -23,7 +23,7 @@ final class KeychainManager {
         #if DEBUG
         self.accessGroup = nil
         #else
-        self.accessGroup = "com.dobrosky.PeekabooClient.shared"
+        self.accessGroup = "dobrosky.PeekabooClient.shared"
         #endif
     }
     

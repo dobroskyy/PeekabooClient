@@ -19,6 +19,7 @@ final class VPNViewModel {
     private let monitorStatusUseCase: MonitorVPNStatusUseCaseProtocol
     private let getServerInfoUseCase: GetServerInfoUseCaseProtocol
     private let vpnService: VPNServiceProtocol
+    private let configRepository: ConfigRepositoryProtocol
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -26,13 +27,15 @@ final class VPNViewModel {
          disconnectUseCase: DisconnectVPNUseCaseProtocol,
          monitorStatusUseCase: MonitorVPNStatusUseCaseProtocol,
          getServerInfoUseCase: GetServerInfoUseCaseProtocol,
-         vpnService: VPNServiceProtocol) {
+         vpnService: VPNServiceProtocol,
+         configRepository: ConfigRepositoryProtocol) {
         
         self.connectUseCase = connectUseCase
         self.disconnectUseCase = disconnectUseCase
         self.monitorStatusUseCase = monitorStatusUseCase
         self.getServerInfoUseCase = getServerInfoUseCase
         self.vpnService = vpnService
+        self.configRepository = configRepository
         
         setupBindings()
         loadServerInfo()
@@ -52,6 +55,25 @@ final class VPNViewModel {
                 }
             } catch {
                 print("Error: \(error)")
+            }
+        }
+    }
+    
+    func addConfiguration(from vlessURL: String) {
+        Task {
+            do {
+                let configuration = try VlessURLParser.parse(vlessURL)
+                try await configRepository.saveConfiguration(configuration)
+                
+                await MainActor.run {
+                    print("Конфигурация сохранена: \(configuration.name)")
+                    // TODO: alert
+                }
+            } catch {
+                await MainActor.run {
+                    print("Ошибка: \(error)")
+                    // TODO: alert
+                }
             }
         }
     }

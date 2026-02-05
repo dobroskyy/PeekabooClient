@@ -18,17 +18,21 @@ final class StatisticsRepository: StatisticsRepositoryProtocol {
         statisticsSubject.eraseToAnyPublisher()
     }
     
-    func getCurrentStatistics() async -> NetworkStatistics {
+    func getCurrentStatistics() -> NetworkStatistics {
         statisticsSubject.value
     }
     
-    func startMonitoring() async {
+    @MainActor
+    func startMonitoring() {
+        
+        guard timer == nil else { return }
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true, block: { [weak self] _ in
             self?.loadStatistics()
         })
     }
     
-    func stopMonitoring() async {
+    @MainActor
+    func stopMonitoring() {
         timer?.invalidate()
         timer = nil
         statisticsSubject.send(.zero)

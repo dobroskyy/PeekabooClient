@@ -45,7 +45,9 @@ final class VPNService: VPNServiceProtocol {
         
         statusSubject.send(.connecting)
         
+        
         try manager.connection.startVPNTunnel()
+        
     }
     
     func disconnect() async throws {
@@ -76,7 +78,7 @@ final class VPNService: VPNServiceProtocol {
         let newManager = NETunnelProviderManager()
 
         let protocolConfig = NETunnelProviderProtocol()
-        protocolConfig.providerBundleIdentifier = "com.dobrosky.PeekabooClient.PacketTunnelExtension"
+        protocolConfig.providerBundleIdentifier = "dobrosky.PeekabooClient.PacketTunnelExtension"
         protocolConfig.serverAddress = configuration.serverAddress
         
         let configData = try JSONEncoder().encode(configuration)

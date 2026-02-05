@@ -10,7 +10,7 @@ import Combine
 
 protocol StatisticsRepositoryProtocol {
     var statisticsPublisher: AnyPublisher<NetworkStatistics, Never> { get }
-    func getCurrentStatistics() async -> NetworkStatistics
-    func startMonitoring() async
-    func stopMonitoring() async
+    func getCurrentStatistics() -> NetworkStatistics
+    func startMonitoring()
+    func stopMonitoring()
 }

@@ -61,7 +61,8 @@ final class DependencyContainer {
             disconnectUseCase: makeDisconnectVPNUseCase(),
             monitorStatusUseCase: makeMonitorVPNStatusUseCase(),
             getServerInfoUseCase: makeGetServerInfoUseCase(),
-            vpnService: vpnService
+            vpnService: vpnService,
+            configRepository: configRepository
         )
     }
     

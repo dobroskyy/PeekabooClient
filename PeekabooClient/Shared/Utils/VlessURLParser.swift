@@ -90,7 +90,7 @@ struct VlessURLParser {
         //
         let realitySettings = VPNConfiguration.RealitySettings(publicKey: publicKey, shortId: shortId, serverName: serverName, fingerprint: fingerPrint, mldsa65Verify: mldsa65Verify, spiderX: spiderX)
         
-        let configuration = VPNConfiguration(id: UUID().uuidString, name: name, serverAddress: server, serverPort: port, userId: userID, encryption: encryption, protocol: .vless(reality: realitySettings))
+        let configuration = VPNConfiguration(id: UUID().uuidString, name: name, originalURL: urlString, serverAddress: server, serverPort: port, userId: userID, encryption: encryption, protocol: .vless(reality: realitySettings))
         
         guard configuration.isValid else {
             throw VlessParserError.invalidRealityParameters

@@ -11,6 +11,8 @@ struct VPNConfiguration: Codable {
     
     let id: String
     let name: String
+    let originalURL: String
+    
     let serverAddress: String
     let serverPort: Int
     let userId: String
@@ -20,6 +22,8 @@ struct VPNConfiguration: Codable {
     enum ProtocolType: Codable {
         case vless(reality: RealitySettings)
     }
+    
+    
     
     struct RealitySettings: Codable {
         let publicKey: String       // pbk
@@ -39,3 +43,5 @@ extension VPNConfiguration {
         !encryption.isEmpty
     }
 }
+
+

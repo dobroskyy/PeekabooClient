@@ -11,8 +11,8 @@ enum AppConstants {
     static let appGroupIdentifier = "group.dobrosky.PeekabooClient"
     
     enum Network {
-        static let socksPort = 1080
-        static let tunnelMTU = 1500
+        static let socksPort = 10808
+        static let tunnelMTU = 8500
     }
     
     enum StorageKeys {

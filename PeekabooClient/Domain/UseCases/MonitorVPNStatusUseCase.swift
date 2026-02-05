@@ -34,17 +34,16 @@ final class MonitorVPNStatusUseCase: MonitorVPNStatusUseCaseProtocol {
     
     private func observeVPNStatus() {
         vpnService.statusPublisher
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] status in
-                Task { [weak self] in
                     switch status {
                     case .connected:
-                        await self?.statisticsRepository.startMonitoring()
+                        self?.statisticsRepository.startMonitoring()
                     case .disconnected:
-                        await self?.statisticsRepository.stopMonitoring()
+                        self?.statisticsRepository.stopMonitoring()
                     default:
                         break
                     }
-                }
             }
             .store(in: &cancellables)
     }

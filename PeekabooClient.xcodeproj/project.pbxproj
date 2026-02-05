@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		50327AA62F328EB900A665EC /* Tun2SocksKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50327AA52F328EB900A665EC /* Tun2SocksKit */; };
 		50327AA82F328EB900A665EC /* Tun2SocksKitC in Frameworks */ = {isa = PBXBuildFile; productRef = 50327AA72F328EB900A665EC /* Tun2SocksKitC */; };
+		506A6B9B2F33B64B00BA4B80 /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 506A6B9A2F33B63400BA4B80 /* libresolv.tbd */; };
+		506A6BA12F33C28400BA4B80 /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 506A6B9A2F33B63400BA4B80 /* libresolv.tbd */; };
 		50D2EB162F3289CB008330DC /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 50D2EB152F3289CB008330DC /* NetworkExtension.framework */; };
 		50D2EB1E2F3289CB008330DC /* PacketTunnelExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 50D2EB132F3289CB008330DC /* PacketTunnelExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -38,6 +40,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		506A6B9A2F33B63400BA4B80 /* libresolv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libresolv.tbd; path = usr/lib/libresolv.tbd; sourceTree = SDKROOT; };
 		50C9CAEF2F290F5800BC04C7 /* PeekabooClient.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PeekabooClient.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		50D2EB132F3289CB008330DC /* PacketTunnelExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PacketTunnelExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		50D2EB152F3289CB008330DC /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = System/Library/Frameworks/NetworkExtension.framework; sourceTree = SDKROOT; };
@@ -62,7 +65,16 @@
 		50D2EB262F328A1E008330DC /* Exceptions for "PeekabooClient" folder in "PacketTunnelExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Data/Repositories/ConfigRepository.swift,
+				Data/Storage/KeychainManager.swift,
+				Domain/Entities/VPNStatus.swift,
+				Domain/Interfaces/ConfigRepositoryProtocol.swift,
 				LibXray.xcframework,
+				Shared/Entities/NetworkStatistics.swift,
+				Shared/Entities/VPNConfiguration.swift,
+				Shared/Utils/AppConstants.swift,
+				Shared/Utils/VlessURLParser.swift,
+				Shared/Utils/XrayConfigMapper.swift,
 			);
 			target = 50D2EB122F3289CB008330DC /* PacketTunnelExtension */;
 		};
@@ -93,6 +105,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				506A6B9B2F33B64B00BA4B80 /* libresolv.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -101,6 +114,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				50327AA82F328EB900A665EC /* Tun2SocksKitC in Frameworks */,
+				506A6BA12F33C28400BA4B80 /* libresolv.tbd in Frameworks */,
 				50D2EB162F3289CB008330DC /* NetworkExtension.framework in Frameworks */,
 				50327AA62F328EB900A665EC /* Tun2SocksKit in Frameworks */,
 			);
@@ -131,6 +145,7 @@
 		50D2EB142F3289CB008330DC /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				506A6B9A2F33B63400BA4B80 /* libresolv.tbd */,
 				50D2EB152F3289CB008330DC /* NetworkExtension.framework */,
 			);
 			name = Frameworks;
@@ -276,6 +291,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PeekabooClient/PeekabooClient.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9FNT3F4SLA;
@@ -296,6 +313,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dobrosky.PeekabooClient;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -315,6 +333,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PeekabooClient/PeekabooClient.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9FNT3F4SLA;
@@ -335,6 +355,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dobrosky.PeekabooClient;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -474,6 +495,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = PacketTunnelExtension/PacketTunnelExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9FNT3F4SLA;
@@ -490,6 +512,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dobrosky.PeekabooClient.PacketTunnelExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -508,6 +531,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = PacketTunnelExtension/PacketTunnelExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9FNT3F4SLA;
@@ -524,6 +548,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dobrosky.PeekabooClient.PacketTunnelExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

@@ -18,10 +18,42 @@ final class XrayConfigMapper {
     }
     
     static func mapToXrayJSON(configuration: VPNConfiguration) throws -> String {
+
         guard case .vless(let reality) = configuration.protocol else {
             throw XrayMapperError.invalidJSONStructure
         }
-        
+
+
+        var realityDict: [String: Any] = [
+            "show": false,
+            "fingerprint": reality.fingerprint,
+            "serverName": reality.serverName,
+            "publicKey": reality.publicKey,
+            "shortId": reality.shortId
+        ]
+
+        if let spiderX = reality.spiderX {
+            realityDict["spiderX"] = spiderX
+        }
+        if let mldsa65Verify = reality.mldsa65Verify {
+            realityDict["mldsa65Verify"] = mldsa65Verify
+        }
+
+        var streamSettings: [String: Any] = [
+            "network": configuration.transport.rawValue,
+            "security": "reality",
+            "realitySettings": realityDict
+        ]
+
+        switch configuration.transport {
+        case .tcp:
+            break
+        case .xhttp:
+            streamSettings["xhttpSettings"] = ["mode": "auto"]
+        default:
+            break
+        }
+
         let vlessOutbound: [String: Any] = [
             "protocol": "vless",
             "tag": "proxy",
@@ -37,16 +69,9 @@ final class XrayConfigMapper {
                 ]]
             ],
             "streamSettings": [
-                "network": "tcp",
+                "network": configuration.transport.rawValue,
                 "security": "reality",
-                "realitySettings": [
-                    "show": false,
-                    "fingerprint": reality.fingerprint,
-                    "serverName": reality.serverName,
-                    "publicKey": reality.publicKey,
-                    "shortId": reality.shortId,
-                    "spiderX": reality.spiderX
-                ]
+                "realitySettings": realityDict
             ]
         ]
         

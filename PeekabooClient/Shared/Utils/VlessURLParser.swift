@@ -39,7 +39,6 @@ enum VlessParserError: LocalizedError {
 struct VlessURLParser {
     
     static func parse(_ urlString: String) throws -> VPNConfiguration {
-        //
         guard let url = URLComponents(string: urlString) else {
             throw VlessParserError.invalidURL
         }
@@ -55,7 +54,7 @@ struct VlessURLParser {
         guard let port = url.port else {
             throw VlessParserError.invalidPort
         }
-        //
+
         guard let queryItems = url.queryItems, !queryItems.isEmpty else {
             throw VlessParserError.missingQueryParameters
         }
@@ -65,38 +64,35 @@ struct VlessURLParser {
                 params[item.name] = value
             }
         }
-        guard let encryption = params["encryption"] else {
+
+        guard let publicKey = params["pbk"], !publicKey.isEmpty else {
             throw VlessParserError.invalidRealityParameters
         }
-        guard let publicKey = params["pbk"] else {
+        guard let serverName = params["sni"], !serverName.isEmpty else {
             throw VlessParserError.invalidRealityParameters
         }
-        guard let fingerPrint = params["fp"] else {
+        guard let fingerprint = params["fp"], !fingerprint.isEmpty else {
             throw VlessParserError.invalidRealityParameters
         }
-        guard let serverName = params["sni"] else {
-            throw VlessParserError.invalidRealityParameters
-        }
-        guard let shortId = params["sid"] else {
-            throw VlessParserError.invalidRealityParameters
-        }
-        guard let spiderX = params["spx"] else {
-            throw VlessParserError.invalidRealityParameters
-        }
-        guard let mldsa65Verify = params["pqv"] else {
-            throw VlessParserError.invalidRealityParameters
-        }
+
+        let encryption = params["encryption"] ?? "none"
+        let shortId = params["sid"] ?? ""
+        let spiderX = params["spx"]
+        let mldsa65Verify = params["pqv"]
+        let transportTypeString = params["type"] ?? "tcp"
+
         let name = url.fragment ?? "CONFIG"
-        //
-        let realitySettings = VPNConfiguration.RealitySettings(publicKey: publicKey, shortId: shortId, serverName: serverName, fingerprint: fingerPrint, mldsa65Verify: mldsa65Verify, spiderX: spiderX)
-        
-        let configuration = VPNConfiguration(id: UUID().uuidString, name: name, originalURL: urlString, serverAddress: server, serverPort: port, userId: userID, encryption: encryption, protocol: .vless(reality: realitySettings))
-        
+
+        let realitySettings = VPNConfiguration.RealitySettings(publicKey: publicKey, serverName: serverName, fingerprint: fingerprint, shortId: shortId, spiderX: spiderX, mldsa65Verify: mldsa65Verify)
+        let transport = VPNConfiguration.TransportType(rawValue: transportTypeString) ?? .tcp
+
+        let configuration = VPNConfiguration(id: UUID().uuidString, name: name, originalURL: urlString, serverAddress: server, serverPort: port, userId: userID, encryption: encryption, transport: transport, protocol: .vless(reality: realitySettings))
+
         guard configuration.isValid else {
             throw VlessParserError.invalidRealityParameters
         }
-        
+
         return configuration
-        
+
     }
 }

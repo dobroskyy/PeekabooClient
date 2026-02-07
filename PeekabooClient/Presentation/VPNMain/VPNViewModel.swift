@@ -13,6 +13,7 @@ final class VPNViewModel {
     @Published private(set) var status: VPNStatus = .disconnected
     @Published private(set) var statistics: NetworkStatistics = .zero
     @Published private(set) var serverInfo: String = "Загрузка..."
+    @Published private(set) var configurations: [VPNConfiguration] = []
     
     private let connectUseCase: ConnectVPNUseCaseProtocol
     private let disconnectUseCase: DisconnectVPNUseCaseProtocol
@@ -38,7 +39,7 @@ final class VPNViewModel {
         self.configRepository = configRepository
         
         setupBindings()
-        loadServerInfo()
+        loadConfigurations()
         setupVPNService()
     }
     
@@ -64,16 +65,43 @@ final class VPNViewModel {
             do {
                 let configuration = try VlessURLParser.parse(vlessURL)
                 try await configRepository.saveConfiguration(configuration)
-                
+
                 await MainActor.run {
                     print("Конфигурация сохранена: \(configuration.name)")
                     // TODO: alert
                 }
+
+                // Перезагружаем список конфигураций
+                loadConfigurations()
             } catch {
                 await MainActor.run {
                     print("Ошибка: \(error)")
                     // TODO: alert
                 }
+            }
+        }
+    }
+
+    func selectConfiguration(_ id: String) {
+        Task {
+            do {
+                try await configRepository.setActiveConfiguration(id: id)
+                print("Активная конфигурация изменена: \(id)")
+            } catch {
+                print("Ошибка выбора конфигурации: \(error)")
+            }
+        }
+    }
+
+    func loadConfigurations() {
+        Task {
+            do {
+                let configs = try await configRepository.getAllConfigurations()
+                await MainActor.run {
+                    self.configurations = configs
+                }
+            } catch {
+                print("Ошибка загрузки конфигураций: \(error)")
             }
         }
     }
@@ -85,22 +113,17 @@ final class VPNViewModel {
                 self?.status = newStatus
             }
             .store(in: &cancellables)
-        
+
         monitorStatusUseCase.statisticsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newStats in
                 self?.statistics = newStats
             }
             .store(in: &cancellables)
-    }
-    
-    private func loadServerInfo() {
-        Task {
-            let info = await getServerInfoUseCase.execute()
-            await MainActor.run {
-                self.serverInfo = info
-            }
-        }
+
+        getServerInfoUseCase.serverInfoPublisher
+                .receive(on: DispatchQueue.main)
+                .assign(to: &$serverInfo)
     }
 
     private func setupVPNService() {

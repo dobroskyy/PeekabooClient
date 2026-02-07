@@ -42,6 +42,21 @@ final class ViewController: UIViewController {
         return button
     }()
     
+    private let addServerButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("Добавить сервер из буфера", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .regular)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+    
+    private let tableView: UITableView = {
+        let table = UITableView()
+        table.translatesAutoresizingMaskIntoConstraints = false
+        table.register(UITableViewCell.self, forCellReuseIdentifier: "ConfigCell")
+        return table
+    }()
+    
     private let viewModel: VPNViewModel
     private var cancellables = Set<AnyCancellable>()
     
@@ -70,6 +85,11 @@ final class ViewController: UIViewController {
         view.addSubview(serverLabel)
         view.addSubview(statisticsLabel)
         view.addSubview(connectButton)
+        view.addSubview(addServerButton)
+        view.addSubview(tableView)
+        
+        tableView.delegate = self
+        tableView.dataSource = self
     }
 
     private func setupConstraints() {
@@ -86,16 +106,45 @@ final class ViewController: UIViewController {
             connectButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             connectButton.topAnchor.constraint(equalTo: statisticsLabel.bottomAnchor, constant: 40),
             connectButton.widthAnchor.constraint(equalToConstant: 200),
-            connectButton.heightAnchor.constraint(equalToConstant: 50)
+            connectButton.heightAnchor.constraint(equalToConstant: 50),
+            
+            addServerButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            addServerButton.topAnchor.constraint(equalTo: connectButton.bottomAnchor, constant: 20),
+            
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.topAnchor.constraint(equalTo: addServerButton.bottomAnchor, constant: 20),
+            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
     }
 
     private func setupActions() {
         connectButton.addTarget(self, action: #selector(connectButtonTapped), for: .touchUpInside)
+        addServerButton.addTarget(self, action: #selector(addServerButtonTapped), for: .touchUpInside)
     }
 
     @objc private func connectButtonTapped() {
         viewModel.toggleConnection()
+    }
+    
+    @objc private func addServerButtonTapped() {
+        guard let clipboardString = UIPasteboard.general.string else {
+            showAlert(title: "Ошибка", message: "Буфер обмена пуст")
+            return
+        }
+        
+        guard clipboardString.hasPrefix("vless://") else {
+            showAlert(title: "Ошибка", message: "В буфере обмена нет VLESS URL")
+            return
+        }
+        
+        viewModel.addConfiguration(from: clipboardString)
+    }
+    
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     private func setupBindings() {
@@ -129,6 +178,42 @@ final class ViewController: UIViewController {
                 self?.serverLabel.text = info
             }
             .store(in: &cancellables)
+        
+        viewModel.$configurations
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.tableView.reloadData()
+            }
+            .store(in: &cancellables)
+    }
+}
+
+extension ViewController: UITableViewDataSource {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return viewModel.configurations.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "ConfigCell", for: indexPath)
+        let config = viewModel.configurations[indexPath.row]
+        cell.textLabel?.text = config.name
+        cell.detailTextLabel?.text = "\(config.serverAddress):\(config.serverPort)"
+        return cell
+    }
+    
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        if editingStyle == .delete {
+            let config = viewModel.configurations[indexPath.row]
+            viewModel.deleteConfiguration(id: config.id)
+        }
+    }
+}
+
+extension ViewController: UITableViewDelegate {
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        let config = viewModel.configurations[indexPath.row]
+        viewModel.selectConfiguration(config.id)
     }
 }
 

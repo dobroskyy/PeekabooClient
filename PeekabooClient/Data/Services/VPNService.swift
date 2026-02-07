@@ -32,6 +32,8 @@ final class VPNService: VPNServiceProtocol {
     func connect(with configuration: VPNConfiguration) async throws {
         if manager == nil {
             try await requestPermission(with: configuration)
+        } else {
+            try await updateConfiguration(with: configuration)
         }
         
         guard let manager = manager else {
@@ -45,9 +47,7 @@ final class VPNService: VPNServiceProtocol {
         
         statusSubject.send(.connecting)
         
-        
         try manager.connection.startVPNTunnel()
-        
     }
     
     func disconnect() async throws {
@@ -96,6 +96,28 @@ final class VPNService: VPNServiceProtocol {
         try await newManager.loadFromPreferences()
         
         self.manager = newManager
+    }
+    
+    private func updateConfiguration(with configuration: VPNConfiguration) async throws {
+        guard let manager = manager else {
+            throw VPNError.configurationInvalid
+        }
+        
+        let protocolConfig = NETunnelProviderProtocol()
+        protocolConfig.providerBundleIdentifier = "dobrosky.PeekabooClient.PacketTunnelExtension"
+        protocolConfig.serverAddress = configuration.serverAddress
+        
+        let configData = try JSONEncoder().encode(configuration)
+        guard let configString = String(data: configData, encoding: .utf8) else {
+            throw VPNError.configurationInvalid
+        }
+        
+        protocolConfig.providerConfiguration = ["config": configString]
+        
+        manager.protocolConfiguration = protocolConfig
+        
+        try await manager.saveToPreferences()
+        try await manager.loadFromPreferences()
     }
     
     private func observeVPNStatusChanges() {

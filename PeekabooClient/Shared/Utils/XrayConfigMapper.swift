@@ -68,11 +68,7 @@ final class XrayConfigMapper {
                     ]]
                 ]]
             ],
-            "streamSettings": [
-                "network": configuration.transport.rawValue,
-                "security": "reality",
-                "realitySettings": realityDict
-            ]
+            "streamSettings": streamSettings
         ]
         
         let config: [String: Any] = [

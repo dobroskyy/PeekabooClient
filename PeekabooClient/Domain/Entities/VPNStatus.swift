@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum VPNStatus {
+enum VPNStatus: Equatable {
     case disconnected
     case connecting
     case connected
@@ -41,7 +41,7 @@ enum VPNStatus {
     }
 }
 
-enum VPNError: LocalizedError {
+enum VPNError: LocalizedError, Equatable {
     case configurationInvalid
     case networkUnavailable
     case authenticationFailed

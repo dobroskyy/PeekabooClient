@@ -70,8 +70,7 @@ final class VPNViewModel {
                     print("Конфигурация сохранена: \(configuration.name)")
                     // TODO: alert
                 }
-
-                // Перезагружаем список конфигураций
+                
                 loadConfigurations()
             } catch {
                 await MainActor.run {
@@ -85,8 +84,18 @@ final class VPNViewModel {
     func selectConfiguration(_ id: String) {
         Task {
             do {
+                let wasConnected = status == .connected
+                
+                if wasConnected {
+                    try await disconnectUseCase.execute()
+                }
+                
                 try await configRepository.setActiveConfiguration(id: id)
                 print("Активная конфигурация изменена: \(id)")
+                
+                if wasConnected {
+                    try await connectUseCase.execute()
+                }
             } catch {
                 print("Ошибка выбора конфигурации: \(error)")
             }
@@ -102,6 +111,17 @@ final class VPNViewModel {
                 }
             } catch {
                 print("Ошибка загрузки конфигураций: \(error)")
+            }
+        }
+    }
+    
+    func deleteConfiguration(id: String) {
+        Task {
+            do {
+                try await configRepository.deleteConfiguration(id: id)
+                loadConfigurations()
+            } catch {
+                print("Ошибка удаления конфигурации: \(error)")
             }
         }
     }

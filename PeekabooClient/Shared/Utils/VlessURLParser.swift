@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CryptoKit
 
 enum VlessParserError: LocalizedError {
     
@@ -34,9 +35,15 @@ enum VlessParserError: LocalizedError {
         case .invalidRealityParameters:
             return "Неверные параметры Reality протокола"
         }
-    }}
+    }
+}
 
 struct VlessURLParser {
+    
+    private static func generateStableID(from urlString: String) -> String {
+        let hash = SHA256.hash(data: Data(urlString.utf8))
+        return hash.compactMap { String(format: "%02x", $0) }.joined()
+    }
     
     static func parse(_ urlString: String) throws -> VPNConfiguration {
         guard let url = URLComponents(string: urlString) else {
@@ -86,7 +93,7 @@ struct VlessURLParser {
         let realitySettings = VPNConfiguration.RealitySettings(publicKey: publicKey, serverName: serverName, fingerprint: fingerprint, shortId: shortId, spiderX: spiderX, mldsa65Verify: mldsa65Verify)
         let transport = VPNConfiguration.TransportType(rawValue: transportTypeString) ?? .tcp
 
-        let configuration = VPNConfiguration(id: UUID().uuidString, name: name, originalURL: urlString, serverAddress: server, serverPort: port, userId: userID, encryption: encryption, transport: transport, protocol: .vless(reality: realitySettings))
+        let configuration = VPNConfiguration(id: generateStableID(from: urlString), name: name, originalURL: urlString, serverAddress: server, serverPort: port, userId: userID, encryption: encryption, transport: transport, protocol: .vless(reality: realitySettings))
 
         guard configuration.isValid else {
             throw VlessParserError.invalidRealityParameters

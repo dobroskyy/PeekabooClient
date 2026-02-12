@@ -8,7 +8,7 @@
 import Foundation
 import Security
 
-final class KeychainManager {
+final class KeychainManager: Sendable {
     
     enum KeychainError: Error {
         case itemNotFound
@@ -17,29 +17,19 @@ final class KeychainManager {
     }
     
     static let shared = KeychainManager()
-    private let accessGroup: String?
     
-    private init() {
-        #if DEBUG
-        self.accessGroup = nil
-        #else
-        self.accessGroup = "dobrosky.PeekabooClient.shared"
-        #endif
-    }
+    private init() {}
     
     func save(_ data: Data, forKey key: String) throws {
         
         try? delete(key: key)
         
-        var query: [String: Any] = [
+        let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock]
-        
-        if let accessGroup = accessGroup {
-            query[kSecAttrAccessGroup as String] = accessGroup
-        }
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+        ]
         
         let status = SecItemAdd(query as CFDictionary, nil)
         
@@ -49,16 +39,12 @@ final class KeychainManager {
     }
     
     func load(key: String) throws -> Data {
-        var query: [String: Any] = [
+        let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
-        
-        if let accessGroup = accessGroup {
-            query[kSecAttrAccessGroup as String] = accessGroup
-        }
         
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -78,14 +64,10 @@ final class KeychainManager {
     }
     
     func delete(key: String) throws {
-        var query: [String: Any] = [
+        let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key
         ]
-        
-        if let accessGroup = accessGroup {
-            query[kSecAttrAccessGroup as String] = accessGroup
-        }
         
         let status = SecItemDelete(query as CFDictionary)
         

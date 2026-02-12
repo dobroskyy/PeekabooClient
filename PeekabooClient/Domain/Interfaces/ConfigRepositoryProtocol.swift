@@ -9,7 +9,7 @@ import Foundation
 import Combine
 
 protocol ConfigRepositoryProtocol {
-    var activeConfigurationPublisher: AnyPublisher<VPNConfiguration?, Never> { get }
+    @MainActor var activeConfigurationPublisher: AnyPublisher<VPNConfiguration?, Never> { get }
     func getActiveConfiguration() async throws -> VPNConfiguration
     func saveConfiguration(_ configuration: VPNConfiguration) async throws
     func setActiveConfiguration(id: String) async throws

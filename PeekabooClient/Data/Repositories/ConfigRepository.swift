@@ -10,9 +10,9 @@ import Combine
 
 final class ConfigRepository: ConfigRepositoryProtocol {
 
-    @Published private var cachedActiveConfig: VPNConfiguration?
+    @MainActor @Published private var cachedActiveConfig: VPNConfiguration?
 
-    var activeConfigurationPublisher: AnyPublisher<VPNConfiguration?, Never> {
+    @MainActor var activeConfigurationPublisher: AnyPublisher<VPNConfiguration?, Never> {
         $cachedActiveConfig.eraseToAnyPublisher()
     }
 
@@ -103,21 +103,22 @@ final class ConfigRepository: ConfigRepositoryProtocol {
     }
 
     func deleteConfiguration(id: String) async throws {
-
         var configurations = try await getAllConfigurations()
-
+        let activeId = sharedDefaults?.string(forKey: Keys.activeConfigId)
+        let deletingActive = (activeId == id)
         configurations.removeAll { $0.id == id }
-
+        
         if configurations.isEmpty {
             try keychain.delete(key: Keys.configurations)
             sharedDefaults?.removeObject(forKey: Keys.activeConfigId)
+            await MainActor.run {
+                cachedActiveConfig = nil
+            }
         } else {
             let data = try encoder.encode(configurations)
             try keychain.save(data, forKey: Keys.configurations)
-
-            let activeId = sharedDefaults?.string(forKey: Keys.activeConfigId)
-            if activeId == id {
-                sharedDefaults?.set(configurations.first?.id, forKey: Keys.activeConfigId)
+            if deletingActive {
+                try await setActiveConfiguration(id: configurations[0].id)
             }
         }
     }

@@ -9,133 +9,120 @@ import NetworkExtension
 import LibXray
 import Tun2SocksKit
 
-class PacketTunnelProvider: NEPacketTunnelProvider {
-    
-    private let MTU = 8500
+final class PacketTunnelProvider: NEPacketTunnelProvider {
 
-    override func startTunnel(options: [String : NSObject]?, completionHandler: @escaping (Error?) -> Void) {
-        
+    private let MTU = AppConstants.Network.tunnelMTU
+    private let socksPort = AppConstants.Network.socksPort
+
+    override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {
         guard let protocolConfig = self.protocolConfiguration as? NETunnelProviderProtocol else {
-            completionHandler(NSError(domain: "Config", code: -1))
+            completionHandler(makeError("Отсутствует конфигурация протокола", code: -1))
             return
         }
-        
         guard let configString = protocolConfig.providerConfiguration?["config"] as? String else {
-            completionHandler(NSError(domain: "Config", code: -2))
+            completionHandler(makeError("Отсутствует конфигурация VPN", code: -2))
             return
         }
-        
         guard let configData = configString.data(using: .utf8) else {
-            completionHandler(NSError(domain: "Config", code: -3))
+            completionHandler(makeError("Неверная кодировка конфигурации", code: -3))
             return
         }
-        
         do {
-            let vpnConfig = try JSONDecoder().decode(VPNConfiguration.self, from: configData)
-            let xrayJSON = try XrayConfigMapper.mapToXrayJSON(configuration: vpnConfig)
-            
-            let request: [String: String] = [
-                "datDir": "",
-                "configJSON": xrayJSON
-            ]
-            let requestData = try JSONEncoder().encode(request)
-            let base64Request = requestData.base64EncodedString()
-            
-            let result = LibXrayRunXrayFromJSON(base64Request)
-            
-            if !result.isEmpty && result.lowercased().contains("error") {
-                completionHandler(NSError(domain: "LibXray", code: -4, userInfo: [NSLocalizedDescriptionKey: result]))
-                return
-            }
-            
-            configureNetworkSettings { [weak self] error in
-                if let error = error {
-                    completionHandler(error)
-                    return
-                }
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    do {
-                        try self?.startSocks5Tunnel()
-                        completionHandler(nil)
-                    } catch {
-                        completionHandler(error)
-                    }
-                }
-            }
-            
+            try startXray(configData: configData)
         } catch {
             completionHandler(error)
             return
         }
+        
+        let networkSettings = buildNetworkSettings()
+        setTunnelNetworkSettings(networkSettings) { [weak self] error in
+            guard let self else {
+                completionHandler(Self.makeError("Провайдер деинициализирован", code: -99))
+                return
+            }
+            if let error {
+                completionHandler(error)
+                return
+            }
+            
+            self.startSocks5Tunnel(completionHandler: completionHandler)
+        }
     }
-    
+
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
         Socks5Tunnel.quit()
         LibXrayStopXray()
         completionHandler()
     }
-    
-    private func startSocks5Tunnel() throws {
-        let socks5Config = """
+
+    private func startXray(configData: Data) throws {
+        let vpnConfig = try JSONDecoder().decode(VPNConfiguration.self, from: configData)
+        let xrayJSON = try XrayConfigMapper.mapToXrayJSON(configuration: vpnConfig)
+        let request: [String: String] = [
+            "datDir": "",
+            "configJSON": xrayJSON
+        ]
+        let requestData = try JSONEncoder().encode(request)
+        let base64Request = requestData.base64EncodedString()
+        let result = LibXrayRunXrayFromJSON(base64Request)
+
+        if !LibXrayGetXrayState() {
+            throw makeError("Xray failed to start: \(result)")
+        }
+    }
+
+    private func startSocks5Tunnel(completionHandler: @escaping (Error?) -> Void) {
+        let config = """
         tunnel:
           mtu: \(MTU)
-        
         socks5:
-          port: \(AppConstants.Network.socksPort)
-          address: "127.0.0.1"
+          port: \(socksPort)
+          address: 127.0.0.1
           udp: 'udp'
-        
         misc:
           task-stack-size: 20480
           connect-timeout: 5000
           read-write-timeout: 60000
-          log-level: warning
+          log-file: stderr
+          log-level: error
           limit-nofile: 65535
         """
-        
-        Socks5Tunnel.run(withConfig: .string(content: socks5Config)) { _ in }
-    }
-    
-    override func handleAppMessage(_ messageData: Data, completionHandler: ((Data?) -> Void)?) {
-        if let handler = completionHandler {
-            handler(messageData)
-        }
-    }
-    
-    override func sleep(completionHandler: @escaping () -> Void) {
-        completionHandler()
-    }
-    
-    override func wake() {
-    }
-}
 
-extension PacketTunnelProvider {
-    
-    private func configureNetworkSettings(completionHandler: @escaping (Error?) -> Void) {
-        let settings = buildNetworkSettings()
-        
-        setTunnelNetworkSettings(settings) { error in
-            completionHandler(error)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else {
+                completionHandler(Self.makeError("Провайдер деинициализирован", code: -99))
+                return
+            }
+            Thread.sleep(forTimeInterval: 1.0)
+            completionHandler(nil)
+            let exitCode = Socks5Tunnel.run(withConfig: .string(content: config))
+            if exitCode != 0 {
+                self.cancelTunnelWithError(self.makeError("Socks5Tunnel завершился с кодом: \(exitCode)", code: Int(exitCode)))
+            }
         }
     }
-    
+
     private func buildNetworkSettings() -> NEPacketTunnelNetworkSettings {
-        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "198.18.0.1")
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "254.1.1.1")
         settings.mtu = NSNumber(value: MTU)
-        
-        let ipv4Settings = NEIPv4Settings(addresses: ["198.18.0.1"], subnetMasks: ["255.255.255.0"])
-        let defaultV4Route = NEIPv4Route(destinationAddress: "0.0.0.0", subnetMask: "0.0.0.0")
-        defaultV4Route.gatewayAddress = "198.18.0.1"
-        ipv4Settings.includedRoutes = [defaultV4Route]
-        ipv4Settings.excludedRoutes = []
-        settings.ipv4Settings = ipv4Settings
-        
-        let dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "1.1.1.1"])
-        dnsSettings.matchDomains = [""]
-        settings.dnsSettings = dnsSettings
-        
+        let ipv4 = NEIPv4Settings(addresses: ["198.18.0.1"], subnetMasks: ["255.255.255.0"])
+        ipv4.includedRoutes = [NEIPv4Route.default()]
+        settings.ipv4Settings = ipv4
+        let ipv6 = NEIPv6Settings(addresses: ["fd6e:a81b:704f:1211::1"], networkPrefixLengths: [64])
+        ipv6.includedRoutes = [NEIPv6Route.default()]
+        settings.ipv6Settings = ipv6
+        let dns = NEDNSSettings(servers: ["1.1.1.1", "8.8.8.8"])
+        dns.matchDomains = [""]
+        settings.dnsSettings = dns
         return settings
+    }
+
+    private func makeError(_ message: String, code: Int = -1) -> NSError {
+        Self.makeError(message, code: code)
+    }
+    
+    private static func makeError(_ message: String, code: Int = -1) -> NSError {
+        NSError(domain: "PacketTunnel", code: code,
+                userInfo: [NSLocalizedDescriptionKey: message])
     }
 }

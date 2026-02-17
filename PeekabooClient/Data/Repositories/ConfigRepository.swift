@@ -28,7 +28,7 @@ final class ConfigRepository: ConfigRepositoryProtocol {
     
     init(keychain: KeychainManager = .shared) {
         self.keychain = keychain
-        self.sharedDefaults = UserDefaults(suiteName: "group.dobrosky.PeekabooClient")
+        self.sharedDefaults = UserDefaults(suiteName: AppConstants.appGroupIdentifier)
         Task { @MainActor in
             cachedActiveConfig = try? await getActiveConfiguration()
         }
@@ -38,8 +38,6 @@ final class ConfigRepository: ConfigRepositoryProtocol {
         guard let activeId = sharedDefaults?.string(forKey: Keys.activeConfigId) else {
             throw VPNError.configurationInvalid
         }
-
-        print(activeId)
 
         let configurations = try await getAllConfigurations()
 

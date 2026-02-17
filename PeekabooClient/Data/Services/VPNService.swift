@@ -40,34 +40,31 @@ final class VPNService: VPNServiceProtocol {
             throw VPNError.configurationInvalid
         }
         
+        
         let currentStatus = manager.connection.status
         guard currentStatus == .disconnected || currentStatus == .invalid else {
             return
         }
         
-        statusSubject.send(.connecting)
-        
         try manager.connection.startVPNTunnel()
     }
     
     func disconnect() async throws {
-        guard let manager = manager else {
-            return
-        }
+        guard let manager = manager else { return }
         
         let currentStatus = manager.connection.status
-        guard currentStatus != .disconnected && currentStatus != .invalid else {
-            return
-        }
-        
-        statusSubject.send(.disconnecting)
+        guard currentStatus != .disconnected && currentStatus != .invalid else { return }
         
         manager.connection.stopVPNTunnel()
+        
+        for await status in statusSubject.values {
+            if status == .disconnected { return }
+        }
     }
     
     func setup() async throws {
         let managers = try await NETunnelProviderManager.loadAllFromPreferences()
-        self.manager = managers.first
+        self.manager = managers.first { ($0.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == AppConstants.providerBundleIdentifier }
         if let manager = manager {
             let currentStatus = mapNEVPNStatus(manager.connection.status)
             statusSubject.send(currentStatus)
@@ -78,7 +75,7 @@ final class VPNService: VPNServiceProtocol {
         let newManager = NETunnelProviderManager()
 
         let protocolConfig = NETunnelProviderProtocol()
-        protocolConfig.providerBundleIdentifier = "dobrosky.PeekabooClient.PacketTunnelExtension"
+        protocolConfig.providerBundleIdentifier = AppConstants.providerBundleIdentifier
         protocolConfig.serverAddress = configuration.serverAddress
         
         let configData = try JSONEncoder().encode(configuration)
@@ -104,7 +101,7 @@ final class VPNService: VPNServiceProtocol {
         }
         
         let protocolConfig = NETunnelProviderProtocol()
-        protocolConfig.providerBundleIdentifier = "dobrosky.PeekabooClient.PacketTunnelExtension"
+        protocolConfig.providerBundleIdentifier = AppConstants.providerBundleIdentifier
         protocolConfig.serverAddress = configuration.serverAddress
         
         let configData = try JSONEncoder().encode(configuration)
@@ -115,6 +112,7 @@ final class VPNService: VPNServiceProtocol {
         protocolConfig.providerConfiguration = ["config": configString]
         
         manager.protocolConfiguration = protocolConfig
+        manager.isEnabled = true
         
         try await manager.saveToPreferences()
         try await manager.loadFromPreferences()

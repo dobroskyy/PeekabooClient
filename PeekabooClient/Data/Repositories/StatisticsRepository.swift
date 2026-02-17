@@ -12,8 +12,6 @@ final class StatisticsRepository: StatisticsRepositoryProtocol {
     private let statisticsSubject = CurrentValueSubject<NetworkStatistics, Never>(.zero)
     private var timer: Timer?
     
-    private let appGroupIdentifier = "group.dobrosky.PeekabooClient"
-    
     var statisticsPublisher: AnyPublisher<NetworkStatistics, Never> {
         statisticsSubject.eraseToAnyPublisher()
     }
@@ -26,7 +24,7 @@ final class StatisticsRepository: StatisticsRepositoryProtocol {
     func startMonitoring() {
         
         guard timer == nil else { return }
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true, block: { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: AppConstants.Timeouts.statisticsUpdateInterval, repeats: true, block: { [weak self] _ in
             self?.loadStatistics()
         })
     }
@@ -40,12 +38,12 @@ final class StatisticsRepository: StatisticsRepositoryProtocol {
     
     private func loadStatistics() {
         guard let containerURL = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: appGroupIdentifier
+            forSecurityApplicationGroupIdentifier: AppConstants.appGroupIdentifier
         ) else {
             return
         }
         
-        let statsURL = containerURL.appendingPathComponent("stats.json")
+        let statsURL = containerURL.appendingPathComponent(AppConstants.StorageKeys.statisticsFile)
         
         guard let data = try? Data(contentsOf: statsURL),
               let stats = try? JSONDecoder().decode(NetworkStatistics.self, from: data) else {
@@ -53,7 +51,7 @@ final class StatisticsRepository: StatisticsRepositoryProtocol {
         }
         
         let age = Date().timeIntervalSince(stats.timestamp)
-        if age > 5.0 {
+        if age > AppConstants.Timeouts.statisticsFreshnessThreshold {
             statisticsSubject.send(.zero)
             return
         }

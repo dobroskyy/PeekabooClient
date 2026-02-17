@@ -8,7 +8,9 @@
 import Foundation
 
 enum AppConstants {
+    
     static let appGroupIdentifier = "group.dobrosky.PeekabooClient"
+    static let providerBundleIdentifier = "dobrosky.PeekabooClient.PacketTunnelExtension"
     
     enum Network {
         static let socksPort = 10808

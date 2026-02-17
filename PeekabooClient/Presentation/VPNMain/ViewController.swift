@@ -211,9 +211,15 @@ extension ViewController: UITableViewDataSource {
 
 extension ViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
         let config = viewModel.configurations[indexPath.row]
         viewModel.selectConfiguration(config.id)
+    }
+    
+    func tableView(_ tableView: UITableView, willSelectRowAt indexPath: IndexPath) -> IndexPath? {
+        if indexPath == tableView.indexPathForSelectedRow {
+            return nil
+        }
+        return indexPath
     }
 }
 

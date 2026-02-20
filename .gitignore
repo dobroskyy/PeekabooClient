@@ -93,3 +93,7 @@ iOSInjectionProject/
 
 # LibXray (too large for GitHub)
 PeekabooClient/LibXray.xcframework/
+
+# Claude Code
+CLAUDE.md
+.claude/

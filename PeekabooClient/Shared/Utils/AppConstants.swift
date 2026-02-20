@@ -11,6 +11,7 @@ enum AppConstants {
     
     static let appGroupIdentifier = "group.dobrosky.PeekabooClient"
     static let providerBundleIdentifier = "dobrosky.PeekabooClient.PacketTunnelExtension"
+    static let appName = "Peekaboo"
     
     enum Network {
         static let socksPort = 10808

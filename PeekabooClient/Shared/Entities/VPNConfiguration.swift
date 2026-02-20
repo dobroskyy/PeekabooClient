@@ -36,13 +36,13 @@ struct VPNConfiguration: Codable {
 
 
     struct RealitySettings: Codable {
-        let publicKey: String       // pbk
-        let serverName: String      // sni
-        let fingerprint: String     // fp
+        let publicKey: String
+        let serverName: String
+        let fingerprint: String
 
-        let shortId: String         // sid
-        let spiderX: String?        // spx
-        let mldsa65Verify: String?  // pqv
+        let shortId: String
+        let spiderX: String?
+        let mldsa65Verify: String?
     }
 }
 
@@ -51,6 +51,34 @@ extension VPNConfiguration {
         !serverAddress.isEmpty &&
         serverPort > 0 && serverPort <= 65535 &&
         !userId.isEmpty
+    }
+    
+    var protocolDisplayName: String {
+        switch `protocol` {
+        case .vless:
+            return "VLESS"
+        }
+    }
+    
+    var transportDisplayName: String {
+        switch transport {
+        case .tcp:
+            return "TCP"
+        case .ws:
+            return "WebSocket"
+        case .grpc:
+            return "gRPC"
+        case .h2:
+            return "HTTP/2"
+        case .xhttp:
+            return "XHTTP"
+        case .httpupgrade:
+            return "HTTPUpgrade"
+        }
+    }
+    
+    var protocolDescription: String {
+        "\(protocolDisplayName) / \(transportDisplayName)"
     }
 }
 

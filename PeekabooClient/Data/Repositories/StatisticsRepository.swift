@@ -16,10 +16,6 @@ final class StatisticsRepository: StatisticsRepositoryProtocol {
         statisticsSubject.eraseToAnyPublisher()
     }
     
-    func getCurrentStatistics() -> NetworkStatistics {
-        statisticsSubject.value
-    }
-    
     @MainActor
     func startMonitoring() {
         

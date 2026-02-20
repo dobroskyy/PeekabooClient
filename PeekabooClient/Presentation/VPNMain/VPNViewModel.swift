@@ -7,37 +7,44 @@
 
 import Foundation
 import Combine
+import UIKit
 
-final class VPNViewModel {
-    
+final class VPNViewModel: ObservableObject {
+
     @Published private(set) var status: VPNStatus = .disconnected
-    @Published private(set) var statistics: NetworkStatistics = .zero
-    @Published private(set) var serverInfo: String = "Загрузка..."
     @Published private(set) var configurations: [VPNConfiguration] = []
+    @Published private(set) var activeConfigurationId: String?
+    @Published private(set) var errorMessage: String?
+    @Published private(set) var isSwitchingConfiguration = false
+
+    var showError: Bool { errorMessage != nil }
+    func clearError() { errorMessage = nil }
     
+    var isConfigurationSelectionEnabled: Bool {
+        !isSwitchingConfiguration && !status.isTransitioning
+    }
+
     private let connectUseCase: ConnectVPNUseCaseProtocol
     private let disconnectUseCase: DisconnectVPNUseCaseProtocol
     private let monitorStatusUseCase: MonitorVPNStatusUseCaseProtocol
-    private let getServerInfoUseCase: GetServerInfoUseCaseProtocol
     private let vpnService: VPNServiceProtocol
     private let configRepository: ConfigRepositoryProtocol
-    
+
     private var cancellables = Set<AnyCancellable>()
-    
+    private var selectConfigurationTask: Task<Void, Never>?
+
     init(connectUseCase: ConnectVPNUseCaseProtocol,
          disconnectUseCase: DisconnectVPNUseCaseProtocol,
          monitorStatusUseCase: MonitorVPNStatusUseCaseProtocol,
-         getServerInfoUseCase: GetServerInfoUseCaseProtocol,
          vpnService: VPNServiceProtocol,
          configRepository: ConfigRepositoryProtocol) {
-        
+
         self.connectUseCase = connectUseCase
         self.disconnectUseCase = disconnectUseCase
         self.monitorStatusUseCase = monitorStatusUseCase
-        self.getServerInfoUseCase = getServerInfoUseCase
         self.vpnService = vpnService
         self.configRepository = configRepository
-        
+
         setupBindings()
         loadConfigurations()
         setupVPNService()
@@ -55,49 +62,59 @@ final class VPNViewModel {
                     break
                 }
             } catch {
-                print("Error: \(error)")
+                await MainActor.run { errorMessage = error.localizedDescription }
             }
         }
     }
     
-    func addConfiguration(from vlessURL: String) {
+    func addConfigurationFromClipboard() {
+        guard let str = UIPasteboard.general.string, str.hasPrefix("vless://") else {
+            errorMessage = "В буфере обмена нет VLESS URL"
+            return
+        }
         Task {
             do {
-                let configuration = try VlessURLParser.parse(vlessURL)
+                let configuration = try VlessURLParser.parse(str)
                 try await configRepository.saveConfiguration(configuration)
-
-                await MainActor.run {
-                    print("Конфигурация сохранена: \(configuration.name)")
-                    // TODO: alert
-                }
-                
                 loadConfigurations()
             } catch {
-                await MainActor.run {
-                    print("Ошибка: \(error)")
-                    // TODO: alert
-                }
+                await MainActor.run { errorMessage = error.localizedDescription }
             }
         }
     }
 
     func selectConfiguration(_ id: String) {
-        Task {
+        guard isConfigurationSelectionEnabled else { return }
+        
+        selectConfigurationTask?.cancel()
+        selectConfigurationTask = Task {
+            await MainActor.run { isSwitchingConfiguration = true }
+            defer { Task { @MainActor in isSwitchingConfiguration = false } }
+            
             do {
                 let wasConnected = status == .connected
+                let previousConfigId = activeConfigurationId
                 
                 if wasConnected {
                     try await disconnectUseCase.execute()
                 }
+                guard !Task.isCancelled else { return }
                 
                 try await configRepository.setActiveConfiguration(id: id)
-                print("Активная конфигурация изменена: \(id)")
+                guard !Task.isCancelled else { return }
                 
                 if wasConnected {
-                    try await connectUseCase.execute()
+                    do {
+                        try await connectUseCase.execute()
+                    } catch {
+                        if let previousId = previousConfigId {
+                            try? await configRepository.setActiveConfiguration(id: previousId)
+                        }
+                        throw error
+                    }
                 }
             } catch {
-                print("Ошибка выбора конфигурации: \(error)")
+                await MainActor.run { errorMessage = error.localizedDescription }
             }
         }
     }
@@ -110,7 +127,7 @@ final class VPNViewModel {
                     self.configurations = configs
                 }
             } catch {
-                print("Ошибка загрузки конфигураций: \(error)")
+                await MainActor.run { errorMessage = error.localizedDescription }
             }
         }
     }
@@ -121,7 +138,7 @@ final class VPNViewModel {
                 try await configRepository.deleteConfiguration(id: id)
                 loadConfigurations()
             } catch {
-                print("Ошибка удаления конфигурации: \(error)")
+                await MainActor.run { errorMessage = error.localizedDescription }
             }
         }
     }
@@ -134,16 +151,12 @@ final class VPNViewModel {
             }
             .store(in: &cancellables)
 
-        monitorStatusUseCase.statisticsPublisher
+        configRepository.activeConfigurationPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] newStats in
-                self?.statistics = newStats
+            .sink { [weak self] config in
+                self?.activeConfigurationId = config?.id
             }
             .store(in: &cancellables)
-
-        getServerInfoUseCase.serverInfoPublisher
-                .receive(on: DispatchQueue.main)
-                .assign(to: &$serverInfo)
     }
 
     private func setupVPNService() {
@@ -152,17 +165,20 @@ final class VPNViewModel {
         }
     }
     
+    var connectedDate: Date? {
+        vpnService.connectedDate
+    }
 }
 
 extension VPNViewModel {
     var buttonTitle: String {
         switch status {
         case .disconnected:
-            return "Подключить"
+            return "Отключено"
         case .connecting:
             return "Подключение..."
         case .connected:
-            return "Отключить"
+            return "Подключено"
         case .disconnecting:
             return "Отключение..."
         case .reasserting:
@@ -172,11 +188,23 @@ extension VPNViewModel {
         }
     }
     
-    var statusText: String {
-        status.displayText
-    }
-    
     var isButtonEnabled: Bool {
         !status.isTransitioning
+    }
+    
+    func formattedDuration(at date: Date = Date()) -> String {
+        guard let connectedDate = connectedDate else {
+            return "00:00"
+        }
+        let totalSeconds = Int(date.timeIntervalSince(connectedDate))
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%02d:%02d", minutes, seconds)
+        }
     }
 }

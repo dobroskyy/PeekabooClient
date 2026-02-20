@@ -49,26 +49,13 @@ final class DependencyContainer {
         )
     }
 
-    func makeGetServerInfoUseCase() -> GetServerInfoUseCaseProtocol {
-        GetServerInfoUseCase(
-            configRepository: configRepository
-        )
-    }
-    
     func makeVPNViewModel() -> VPNViewModel {
         VPNViewModel(
             connectUseCase: makeConnectVPNUseCase(),
             disconnectUseCase: makeDisconnectVPNUseCase(),
             monitorStatusUseCase: makeMonitorVPNStatusUseCase(),
-            getServerInfoUseCase: makeGetServerInfoUseCase(),
             vpnService: vpnService,
             configRepository: configRepository
         )
     }
-    
-    func makeViewController() -> ViewController {
-        let viewModel = makeVPNViewModel()
-        return ViewController(viewModel: viewModel)
-    }
-    
 }

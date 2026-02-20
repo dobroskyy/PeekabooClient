@@ -53,10 +53,16 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
         statisticsTimer?.invalidate()
         statisticsTimer = nil
+        
         Socks5Tunnel.quit()
         LibXrayStopXray()
-        completionHandler()
         
+        DispatchQueue.global().async {
+            while LibXrayGetXrayState() {
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+            completionHandler()
+        }
     }
 
     private func startXray(configData: Data) throws {

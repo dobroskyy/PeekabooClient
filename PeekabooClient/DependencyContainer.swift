@@ -21,10 +21,6 @@ final class DependencyContainer {
         ConfigRepository(keychain: keychainManager)
     }()
     
-    private lazy var statisticsRepository: StatisticsRepositoryProtocol = {
-        StatisticsRepository()
-    }()
-    
     private lazy var vpnService: VPNServiceProtocol = {
         VPNService()
     }()
@@ -42,18 +38,10 @@ final class DependencyContainer {
         )
     }
 
-    func makeMonitorVPNStatusUseCase() -> MonitorVPNStatusUseCaseProtocol {
-        MonitorVPNStatusUseCase(
-            vpnService: vpnService,
-            statisticsRepository: statisticsRepository
-        )
-    }
-
     func makeVPNViewModel() -> VPNViewModel {
         VPNViewModel(
             connectUseCase: makeConnectVPNUseCase(),
             disconnectUseCase: makeDisconnectVPNUseCase(),
-            monitorStatusUseCase: makeMonitorVPNStatusUseCase(),
             vpnService: vpnService,
             configRepository: configRepository
         )

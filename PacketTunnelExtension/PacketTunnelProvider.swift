@@ -13,7 +13,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
 
     private let MTU = AppConstants.Network.tunnelMTU
     private let socksPort = AppConstants.Network.socksPort
-    private var statisticsTimer: Timer?
 
     override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {
         guard let protocolConfig = self.protocolConfiguration as? NETunnelProviderProtocol else {
@@ -51,9 +50,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
-        statisticsTimer?.invalidate()
-        statisticsTimer = nil
-        
         Socks5Tunnel.quit()
         LibXrayStopXray()
         
@@ -104,7 +100,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
                 return
             }
             Thread.sleep(forTimeInterval: 1.0)
-            self.startStatisticsMonitoring()
             completionHandler(nil)
             let exitCode = Socks5Tunnel.run(withConfig: .string(content: config))
             if exitCode != 0 {
@@ -127,35 +122,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         settings.dnsSettings = dns
         return settings
     }
-    
-    private func saveStatistics() {
-        let stats = Socks5Tunnel.stats
-        
-        let statistics = NetworkStatistics(
-            uploadBytes: UInt64(stats.up.bytes),
-            downloadBytes: UInt64(stats.down.bytes),
-            timestamp: Date()
-        )
-        
-        guard let containerURL = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: AppConstants.appGroupIdentifier
-        ) else { return }
-        
-        let statsURL = containerURL.appendingPathComponent(AppConstants.StorageKeys.statisticsFile)
-        
-        if let data = try? JSONEncoder().encode(statistics) {
-            try? data.write(to: statsURL)
-        }
-    }
-    
-    private func startStatisticsMonitoring() {
-        DispatchQueue.main.async { [weak self] in
-            self?.statisticsTimer = Timer.scheduledTimer(withTimeInterval: AppConstants.Timeouts.statisticsUpdateInterval, repeats: true) { [weak self] _ in
-                self?.saveStatistics()
-            }
-        }
-    }
-    
 
     private func makeError(_ message: String, code: Int = -1) -> NSError {
         Self.makeError(message, code: code)

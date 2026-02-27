@@ -10,10 +10,10 @@ import Combine
 
 final class ConfigRepository: ConfigRepositoryProtocol {
 
-    @MainActor @Published private var cachedActiveConfig: VPNConfiguration?
+    private let activeConfigSubject = CurrentValueSubject<VPNConfiguration?, Never>(nil)
 
-    @MainActor var activeConfigurationPublisher: AnyPublisher<VPNConfiguration?, Never> {
-        $cachedActiveConfig.eraseToAnyPublisher()
+    var activeConfigurationPublisher: AnyPublisher<VPNConfiguration?, Never> {
+        activeConfigSubject.eraseToAnyPublisher()
     }
 
     private enum Keys {
@@ -29,8 +29,9 @@ final class ConfigRepository: ConfigRepositoryProtocol {
     init(keychain: KeychainManager = .shared) {
         self.keychain = keychain
         self.sharedDefaults = UserDefaults(suiteName: AppConstants.appGroupIdentifier)
-        Task { @MainActor in
-            cachedActiveConfig = try? await getActiveConfiguration()
+        Task {
+            let config = try? await getActiveConfiguration()
+            activeConfigSubject.send(config)
         }
     }
     
@@ -62,9 +63,7 @@ final class ConfigRepository: ConfigRepositoryProtocol {
         try keychain.save(data, forKey: Keys.configurations)
         sharedDefaults?.set(configuration.id, forKey: Keys.activeConfigId)
 
-        await MainActor.run {
-            cachedActiveConfig = configuration
-        }
+        activeConfigSubject.send(configuration)
 
     }
 
@@ -78,9 +77,7 @@ final class ConfigRepository: ConfigRepositoryProtocol {
 
         sharedDefaults?.set(id, forKey: Keys.activeConfigId)
 
-        await MainActor.run {
-            cachedActiveConfig = config
-        }
+        activeConfigSubject.send(config)
     }
     
     func getAllConfigurations() async throws -> [VPNConfiguration] {
@@ -95,11 +92,6 @@ final class ConfigRepository: ConfigRepositoryProtocol {
         }
     }
     
-    func deleteAllConfigurations() async throws {
-        try keychain.delete(key: Keys.configurations)
-        sharedDefaults?.removeObject(forKey: Keys.activeConfigId)
-    }
-
     func deleteConfiguration(id: String) async throws {
         var configurations = try await getAllConfigurations()
         let activeId = sharedDefaults?.string(forKey: Keys.activeConfigId)
@@ -109,9 +101,7 @@ final class ConfigRepository: ConfigRepositoryProtocol {
         if configurations.isEmpty {
             try keychain.delete(key: Keys.configurations)
             sharedDefaults?.removeObject(forKey: Keys.activeConfigId)
-            await MainActor.run {
-                cachedActiveConfig = nil
-            }
+            activeConfigSubject.send(nil)
         } else {
             let data = try encoder.encode(configurations)
             try keychain.save(data, forKey: Keys.configurations)

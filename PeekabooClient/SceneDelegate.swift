@@ -25,13 +25,13 @@ class SceneDelegate: UIResponder, UIApplicationDelegate, UIWindowSceneDelegate {
         let homeVC = UIHostingController(rootView: VPNMainView(viewModel: viewModel))
         homeVC.tabBarItem = UITabBarItem(title: "Главная", image: UIImage(systemName: "house"), tag: 0)
 
-        let settingsVC = SettingsViewController()
-        settingsVC.tabBarItem = UITabBarItem(title: "Настройки", image: UIImage(systemName: "gear"), tag: 1)
+        let settingsVC = UIHostingController(rootView: SettingsView())
+        settingsVC.tabBarItem = UITabBarItem(title: "Информация", image: UIImage(systemName: "gear"), tag: 1)
 
         let tabBar = UITabBarController()
         tabBar.viewControllers = [
             homeVC,
-            UINavigationController(rootViewController: settingsVC)
+            settingsVC
         ]
 
         let window = UIWindow(windowScene: windowScene)

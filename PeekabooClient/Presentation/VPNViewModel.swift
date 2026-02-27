@@ -26,22 +26,20 @@ final class VPNViewModel: ObservableObject {
 
     private let connectUseCase: ConnectVPNUseCaseProtocol
     private let disconnectUseCase: DisconnectVPNUseCaseProtocol
-    private let monitorStatusUseCase: MonitorVPNStatusUseCaseProtocol
     private let vpnService: VPNServiceProtocol
     private let configRepository: ConfigRepositoryProtocol
 
     private var cancellables = Set<AnyCancellable>()
     private var selectConfigurationTask: Task<Void, Never>?
+    private var connectTask: Task<Void, Never>?
 
     init(connectUseCase: ConnectVPNUseCaseProtocol,
          disconnectUseCase: DisconnectVPNUseCaseProtocol,
-         monitorStatusUseCase: MonitorVPNStatusUseCaseProtocol,
          vpnService: VPNServiceProtocol,
          configRepository: ConfigRepositoryProtocol) {
 
         self.connectUseCase = connectUseCase
         self.disconnectUseCase = disconnectUseCase
-        self.monitorStatusUseCase = monitorStatusUseCase
         self.vpnService = vpnService
         self.configRepository = configRepository
 
@@ -51,7 +49,8 @@ final class VPNViewModel: ObservableObject {
     }
     
     func toggleConnection() {
-        Task {
+        connectTask?.cancel()
+        connectTask = Task {
             do {
                 switch status {
                 case .disconnected:
@@ -69,7 +68,7 @@ final class VPNViewModel: ObservableObject {
     
     func addConfigurationFromClipboard() {
         guard let str = UIPasteboard.general.string, str.hasPrefix("vless://") else {
-            errorMessage = "В буфере обмена нет VLESS URL"
+            errorMessage = "В буфере обмена нет URL"
             return
         }
         Task {
@@ -144,7 +143,7 @@ final class VPNViewModel: ObservableObject {
     }
     
     private func setupBindings() {
-        monitorStatusUseCase.statusPublisher
+        vpnService.statusPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newStatus in
                 self?.status = newStatus
@@ -161,7 +160,11 @@ final class VPNViewModel: ObservableObject {
 
     private func setupVPNService() {
         Task {
-            try? await vpnService.setup()
+            do {
+                try await vpnService.setup()
+            } catch {
+                await MainActor.run { errorMessage = error.localizedDescription }
+            }
         }
     }
     

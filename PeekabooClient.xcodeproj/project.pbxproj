@@ -65,17 +65,16 @@
 		50D2EB262F328A1E008330DC /* Exceptions for "PeekabooClient" folder in "PacketTunnelExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Data/Repositories/ConfigRepository.swift,
-				Data/Storage/KeychainManager.swift,
-				Domain/Entities/VPNError.swift,
-				Domain/Entities/VPNStatus.swift,
-				Domain/Interfaces/ConfigRepositoryProtocol.swift,
+				Data/ConfigRepository.swift,
+				Data/KeychainManager.swift,
+				Domain/ConfigRepositoryProtocol.swift,
+				Domain/VPNError.swift,
+				Domain/VPNStatus.swift,
 				LibXray.xcframework,
-				Shared/Entities/NetworkStatistics.swift,
-				Shared/Entities/VPNConfiguration.swift,
-				Shared/Utils/AppConstants.swift,
-				Shared/Utils/VlessURLParser.swift,
-				Shared/Utils/XrayConfigMapper.swift,
+				Shared/AppConstants.swift,
+				Shared/VlessURLParser.swift,
+				Shared/VPNConfiguration.swift,
+				Shared/XrayConfigMapper.swift,
 			);
 			target = 50D2EB122F3289CB008330DC /* PacketTunnelExtension */;
 		};

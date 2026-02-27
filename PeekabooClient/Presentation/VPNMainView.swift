@@ -55,9 +55,16 @@ struct VPNMainView: View {
             )) {
                 Text(viewModel.buttonTitle)
             }
+            
             .disabled(!viewModel.isButtonEnabled)
             .tint(.orange)
-        
+            LabeledContent {
+                Text("\(viewModel.reconnectCount)")
+            } label: {
+                Text("Переподключений")
+            }
+            
+            
         }
         
     }

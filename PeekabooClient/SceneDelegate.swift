@@ -7,6 +7,7 @@
 
 import UIKit
 import SwiftUI
+import UserNotifications
 
 @main
 class SceneDelegate: UIResponder, UIApplicationDelegate, UIWindowSceneDelegate {
@@ -39,6 +40,9 @@ class SceneDelegate: UIResponder, UIApplicationDelegate, UIWindowSceneDelegate {
         window.overrideUserInterfaceStyle = .dark
         window.makeKeyAndVisible()
         self.window = window
+        
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {}

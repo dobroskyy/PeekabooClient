@@ -10,20 +10,27 @@ import Combine
 import UIKit
 
 final class VPNViewModel: ObservableObject {
-
+    
     @Published private(set) var status: VPNStatus = .disconnected
     @Published private(set) var configurations: [VPNConfiguration] = []
     @Published private(set) var activeConfigurationId: String?
     @Published private(set) var errorMessage: String?
     @Published private(set) var isSwitchingConfiguration = false
-
+    
+    private let shared = UserDefaults(suiteName: AppConstants.appGroupIdentifier)
+    
     var showError: Bool { errorMessage != nil }
     func clearError() { errorMessage = nil }
     
     var isConfigurationSelectionEnabled: Bool {
         !isSwitchingConfiguration && !status.isTransitioning
     }
-
+    
+    var reconnectCount: Int {
+        guard let shared = self.shared else { return 0 }
+        return shared.integer(forKey: AppConstants.Keys.reconnectCount)
+    }
+    
     private let connectUseCase: ConnectVPNUseCaseProtocol
     private let disconnectUseCase: DisconnectVPNUseCaseProtocol
     private let vpnService: VPNServiceProtocol

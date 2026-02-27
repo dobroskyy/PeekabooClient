@@ -35,4 +35,9 @@ enum AppConstants {
         static let socksPort = 10808
         static let tunnelMTU = 8500
     }
+    
+    enum Keys {
+        static let reconnectCount = "reconnect_count"
+        static let sessionIsActive = "session_is_active"
+    }
 }

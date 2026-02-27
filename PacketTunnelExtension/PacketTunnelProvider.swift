@@ -8,13 +8,42 @@
 import NetworkExtension
 import LibXray
 import Tun2SocksKit
+import UserNotifications
 
 final class PacketTunnelProvider: NEPacketTunnelProvider {
+    
+    private let shared = UserDefaults(suiteName: AppConstants.appGroupIdentifier)
 
     private let MTU = AppConstants.Network.tunnelMTU
     private let socksPort = AppConstants.Network.socksPort
 
     override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {
+        
+        guard let shared = self.shared else {
+            return
+        }
+        
+        let isActive = shared.bool(forKey: AppConstants.Keys.sessionIsActive)
+        
+        if isActive {
+            let count = shared.integer(forKey: AppConstants.Keys.reconnectCount)
+            shared.set(count + 1, forKey: AppConstants.Keys.reconnectCount)
+            let content = UNMutableNotificationContent()
+              content.title = "Peekaboo"
+              content.body = "VPN переподключён"
+
+              let request = UNNotificationRequest(
+                  identifier: UUID().uuidString,
+                  content: content,
+                  trigger: nil
+              )
+
+              UNUserNotificationCenter.current().add(request)
+        } else {
+            shared.set(true, forKey: AppConstants.Keys.sessionIsActive)
+            shared.set(0, forKey: AppConstants.Keys.reconnectCount)
+        }
+        
         guard let protocolConfig = self.protocolConfiguration as? NETunnelProviderProtocol else {
             completionHandler(makeError("Отсутствует конфигурация протокола", code: -1))
             return
@@ -59,6 +88,13 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             }
             completionHandler()
         }
+        
+        guard let shared = self.shared else {
+            return
+        }
+        
+        shared.set(false, forKey: AppConstants.Keys.sessionIsActive)
+        
     }
 
     private func startXray(configData: Data) throws {

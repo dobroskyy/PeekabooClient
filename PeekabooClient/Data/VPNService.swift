@@ -110,10 +110,16 @@ extension VPNService {
     
     private func requestPermission(with configuration: VPNConfiguration) async throws {
         let newManager = NETunnelProviderManager()
+        
+        let rule = NEOnDemandRuleConnect()
+        rule.interfaceTypeMatch = .any
+        
         let protocolConfig = try buildProtocolConfig(for: configuration)
         newManager.protocolConfiguration = protocolConfig
         newManager.localizedDescription = AppConstants.appName
         newManager.isEnabled = true
+        newManager.onDemandRules = [rule]
+        newManager.isOnDemandEnabled = true
         try await newManager.saveToPreferences()
         try await newManager.loadFromPreferences()
         self.manager = newManager
@@ -123,9 +129,15 @@ extension VPNService {
         guard let manager = manager else {
             throw VPNError.configurationInvalid
         }
+        
+        let rule = NEOnDemandRuleConnect()
+        rule.interfaceTypeMatch = .any
+        
         let protocolConfig = try buildProtocolConfig(for: configuration)
         manager.protocolConfiguration = protocolConfig
         manager.isEnabled = true
+        manager.onDemandRules = [rule]
+        manager.isOnDemandEnabled = true
         try await manager.saveToPreferences()
         try await manager.loadFromPreferences()
     }

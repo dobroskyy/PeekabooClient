@@ -18,30 +18,21 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     private let socksPort = AppConstants.Network.socksPort
 
     override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {
-        
-        guard let shared = self.shared else {
-            return
-        }
-        
-        let isActive = shared.bool(forKey: AppConstants.Keys.sessionIsActive)
-        
-        if isActive {
-            let count = shared.integer(forKey: AppConstants.Keys.reconnectCount)
-            shared.set(count + 1, forKey: AppConstants.Keys.reconnectCount)
-            let content = UNMutableNotificationContent()
-              content.title = "Peekaboo"
-              content.body = "VPN переподключён"
-
-              let request = UNNotificationRequest(
-                  identifier: UUID().uuidString,
-                  content: content,
-                  trigger: nil
-              )
-
-              UNUserNotificationCenter.current().add(request)
-        } else {
-            shared.set(true, forKey: AppConstants.Keys.sessionIsActive)
-            shared.set(0, forKey: AppConstants.Keys.reconnectCount)
+        if let shared = self.shared {
+            let isActive = shared.bool(forKey: AppConstants.Keys.sessionIsActive)
+            if options == nil && isActive {
+                let count = shared.integer(forKey: AppConstants.Keys.reconnectCount)
+                if count >= 25 {
+                    sendNotification(body: "Превышен лимит переподключений. VPN Отключен")
+                    completionHandler(makeError("Превышен лимит переподключений", code: 0))
+                    return
+                }
+                shared.set(count + 1, forKey: AppConstants.Keys.reconnectCount)
+                sendNotification(body: "VPN Переподключен")
+            } else {
+                shared.set(true, forKey: AppConstants.Keys.sessionIsActive)
+                shared.set(0, forKey: AppConstants.Keys.reconnectCount)
+            }
         }
         
         guard let protocolConfig = self.protocolConfiguration as? NETunnelProviderProtocol else {
@@ -76,11 +67,16 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             
             self.startSocks5Tunnel(completionHandler: completionHandler)
         }
+        
     }
 
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
         Socks5Tunnel.quit()
         LibXrayStopXray()
+        
+        if let shared = self.shared {
+            shared.set(false, forKey: AppConstants.Keys.sessionIsActive)
+        }
         
         DispatchQueue.global().async {
             while LibXrayGetXrayState() {
@@ -88,13 +84,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             }
             completionHandler()
         }
-        
-        guard let shared = self.shared else {
-            return
-        }
-        
-        shared.set(false, forKey: AppConstants.Keys.sessionIsActive)
-        
     }
 
     private func startXray(configData: Data) throws {
@@ -167,4 +156,19 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         NSError(domain: "PacketTunnel", code: code,
                 userInfo: [NSLocalizedDescriptionKey: message])
     }
+    
+    private func sendNotification(body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "Peekaboo"
+        content.body = body
+        
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+        
+        UNUserNotificationCenter.current().add(request)
+    }
+    
 }

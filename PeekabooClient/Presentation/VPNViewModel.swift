@@ -16,6 +16,7 @@ final class VPNViewModel: ObservableObject {
     @Published private(set) var activeConfigurationId: String?
     @Published private(set) var errorMessage: String?
     @Published private(set) var isSwitchingConfiguration = false
+    @Published private(set) var reconnectCount = 0
     
     private let shared = UserDefaults(suiteName: AppConstants.appGroupIdentifier)
     
@@ -24,11 +25,6 @@ final class VPNViewModel: ObservableObject {
     
     var isConfigurationSelectionEnabled: Bool {
         !isSwitchingConfiguration && !status.isTransitioning
-    }
-    
-    var reconnectCount: Int {
-        guard let shared = self.shared else { return 0 }
-        return shared.integer(forKey: AppConstants.Keys.reconnectCount)
     }
     
     private let connectUseCase: ConnectVPNUseCaseProtocol
@@ -153,10 +149,14 @@ final class VPNViewModel: ObservableObject {
         vpnService.statusPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newStatus in
-                self?.status = newStatus
+                guard let self else { return }
+                self.status = newStatus
+                if newStatus == .connected {
+                    self.reconnectCount = self.shared?.integer(forKey: AppConstants.Keys.reconnectCount) ?? 0
+                }
             }
             .store(in: &cancellables)
-
+        
         configRepository.activeConfigurationPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] config in

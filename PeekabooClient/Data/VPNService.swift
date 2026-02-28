@@ -42,13 +42,16 @@ final class VPNService: VPNServiceProtocol {
         guard currentStatus == .disconnected || currentStatus == .invalid else {
             return
         }
-        try manager.connection.startVPNTunnel()
+        try manager.connection.startVPNTunnel(options: ["userInitiated": NSNumber(value: true)])
     }
     
     func disconnect() async throws {
         guard let manager = manager else { return }
         let currentStatus = manager.connection.status
         guard currentStatus != .disconnected && currentStatus != .invalid else { return }
+        manager.isOnDemandEnabled = false
+        try await manager.saveToPreferences()
+        try await manager.loadFromPreferences()
         try await withTimeout(seconds: 10) {
             manager.connection.stopVPNTunnel()
             for await status in self.statusSubject.values {

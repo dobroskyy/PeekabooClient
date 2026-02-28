@@ -151,9 +151,18 @@ final class VPNViewModel: ObservableObject {
             .sink { [weak self] newStatus in
                 guard let self else { return }
                 self.status = newStatus
-                if newStatus == .connected {
-                    self.reconnectCount = self.shared?.integer(forKey: AppConstants.Keys.reconnectCount) ?? 0
-                }
+                self.refreshReconnectCount()
+                self.checkReconnectionLimit()
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: UIScene.didActivateNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.refreshReconnectCount()
+                self.checkReconnectionLimit()
+                
             }
             .store(in: &cancellables)
         
@@ -163,6 +172,28 @@ final class VPNViewModel: ObservableObject {
                 self?.activeConfigurationId = config?.id
             }
             .store(in: &cancellables)
+    }
+
+    private func refreshReconnectCount() {
+        reconnectCount = shared?.integer(forKey: AppConstants.Keys.reconnectCount) ?? 0
+    }
+    
+    private func checkReconnectionLimit() {
+        let limitReached = self.shared?.bool(forKey: AppConstants.Keys.limitReached) ?? false
+        if limitReached {
+            Task {
+                do {
+                    try await self.disconnectUseCase.execute()
+                    await MainActor.run {
+                        self.errorMessage = "Превышен лимит переподключений. VPN отключён"
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.errorMessage = error.localizedDescription
+                    }
+                }
+            }
+        }
     }
 
     private func setupVPNService() {

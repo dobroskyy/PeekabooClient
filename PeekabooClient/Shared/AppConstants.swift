@@ -39,5 +39,6 @@ enum AppConstants {
     enum Keys {
         static let reconnectCount = "reconnect_count"
         static let sessionIsActive = "session_is_active"
+        static let limitReached = "limit_reached"
     }
 }

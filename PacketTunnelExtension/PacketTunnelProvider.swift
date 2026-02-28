@@ -18,11 +18,18 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     private let socksPort = AppConstants.Network.socksPort
 
     override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {
+        
         if let shared = self.shared {
+            if shared.bool(forKey: AppConstants.Keys.limitReached) {
+                completionHandler(makeError("Превышен лимит переподключений", code: 0))
+                return
+            }
             let isActive = shared.bool(forKey: AppConstants.Keys.sessionIsActive)
-            if options == nil && isActive {
+            let isUserInitiated = options?["userInitiated"] != nil
+            if !isUserInitiated && isActive {
                 let count = shared.integer(forKey: AppConstants.Keys.reconnectCount)
                 if count >= 25 {
+                    shared.set(true, forKey: AppConstants.Keys.limitReached)
                     sendNotification(body: "Превышен лимит переподключений. VPN Отключен")
                     completionHandler(makeError("Превышен лимит переподключений", code: 0))
                     return
@@ -73,10 +80,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
         Socks5Tunnel.quit()
         LibXrayStopXray()
-        
-        if let shared = self.shared {
-            shared.set(false, forKey: AppConstants.Keys.sessionIsActive)
-        }
         
         DispatchQueue.global().async {
             while LibXrayGetXrayState() {

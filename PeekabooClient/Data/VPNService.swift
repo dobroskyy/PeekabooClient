@@ -13,6 +13,8 @@ final class VPNService: VPNServiceProtocol {
     
     private var manager: NETunnelProviderManager?
     
+    private let shared = UserDefaults(suiteName: AppConstants.appGroupIdentifier)
+    
     private let statusSubject = CurrentValueSubject<VPNStatus, Never>(.disconnected)
     
     private var cancellables = Set<AnyCancellable>()
@@ -30,6 +32,8 @@ final class VPNService: VPNServiceProtocol {
     }
     
     func connect(with configuration: VPNConfiguration) async throws {
+        shared?.set(false, forKey: AppConstants.Keys.limitReached)
+        
         if manager == nil {
             try await requestPermission(with: configuration)
         } else {
@@ -46,6 +50,7 @@ final class VPNService: VPNServiceProtocol {
     }
     
     func disconnect() async throws {
+        shared?.set(0, forKey: AppConstants.Keys.reconnectCount)
         guard let manager = manager else { return }
         let currentStatus = manager.connection.status
         guard currentStatus != .disconnected && currentStatus != .invalid else { return }

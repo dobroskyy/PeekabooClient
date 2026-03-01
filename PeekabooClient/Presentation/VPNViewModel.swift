@@ -137,6 +137,9 @@ final class VPNViewModel: ObservableObject {
     func deleteConfiguration(id: String) {
         Task {
             do {
+                if id == activeConfigurationId && status == .connected {
+                    try await disconnectUseCase.execute()
+                }
                 try await configRepository.deleteConfiguration(id: id)
                 loadConfigurations()
             } catch {

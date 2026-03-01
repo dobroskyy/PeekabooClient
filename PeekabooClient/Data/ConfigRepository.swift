@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 
+@MainActor
 final class ConfigRepository: ConfigRepositoryProtocol {
 
     private let activeConfigSubject = CurrentValueSubject<VPNConfiguration?, Never>(nil)
@@ -26,7 +27,7 @@ final class ConfigRepository: ConfigRepositoryProtocol {
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     
-    init(keychain: KeychainManager = .shared) {
+    init(keychain: KeychainManager) {
         self.keychain = keychain
         self.sharedDefaults = UserDefaults(suiteName: AppConstants.appGroupIdentifier)
         Task {

@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 
+@MainActor
 protocol ConfigRepositoryProtocol {
     var activeConfigurationPublisher: AnyPublisher<VPNConfiguration?, Never> { get }
     func getActiveConfiguration() async throws -> VPNConfiguration

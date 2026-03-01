@@ -9,6 +9,7 @@ import Foundation
 import NetworkExtension
 import Combine
 
+@MainActor
 final class VPNService: VPNServiceProtocol {
     
     private var manager: NETunnelProviderManager?
@@ -152,6 +153,7 @@ extension VPNService {
     
     private func observeVPNStatusChanges() {
         NotificationCenter.default.publisher(for: .NEVPNStatusDidChange, object: nil)
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self = self, let manager = self.manager else { return }
                 let neStatus = manager.connection.status

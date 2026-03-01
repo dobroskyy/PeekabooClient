@@ -10,11 +10,24 @@ import Foundation
 
 final class XrayConfigMapper {
     
-    enum XrayMapperError: Error {
+    enum XrayMapperError: LocalizedError {
         case invalidURL
         case emptyResponse
         case invalidJSONStructure
         case invalidResultJSON
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidURL:
+                return "Некорректный адрес сервера"
+            case .emptyResponse:
+                return "Пустой ответ от Xray"
+            case .invalidJSONStructure:
+                return "Ошибка формирования конфигурации Xray"
+            case .invalidResultJSON:
+                return "Некорректный JSON в ответе Xray"
+            }
+        }
     }
     
     static func mapToXrayJSON(configuration: VPNConfiguration) throws -> String {

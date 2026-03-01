@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 
+@MainActor
 protocol VPNServiceProtocol {
     var statusPublisher: AnyPublisher<VPNStatus, Never> { get }
     var connectedDate: Date? { get }

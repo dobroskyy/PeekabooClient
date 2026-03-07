@@ -62,9 +62,23 @@ final class XrayConfigMapper {
         case .tcp:
             break
         case .xhttp:
-            streamSettings["xhttpSettings"] = ["mode": "auto"]
-        default:
-            break
+            let path = configuration.transportPath ?? "/"
+            let host = configuration.transportHost ?? ""
+            streamSettings["xhttpSettings"] = ["mode": "auto", "path": path, "host": host]
+        case .ws:
+            let path = configuration.transportPath ?? "/"
+            let host = configuration.transportHost ?? ""
+            streamSettings["wsSettings"] = ["path": path, "host": host]
+        case .grpc:
+            streamSettings["grpcSettings"] = ["serviceName": configuration.serviceName ?? ""]
+        case .h2:
+            let path = configuration.transportPath ?? "/"
+            let host = configuration.transportHost ?? ""
+            streamSettings["httpSettings"] = ["path": path, "host": [host]]
+        case .httpupgrade:
+            let path = configuration.transportPath ?? "/"
+            let host = configuration.transportHost ?? ""
+            streamSettings["httpupgradeSettings"] = ["path": path, "host": host]
         }
 
         let vlessOutbound: [String: Any] = [
@@ -77,7 +91,7 @@ final class XrayConfigMapper {
                     "users": [[
                         "id": configuration.userId,
                         "encryption": configuration.encryption,
-                        "flow": ""
+                        "flow": configuration.flow
                     ]]
                 ]]
             ],

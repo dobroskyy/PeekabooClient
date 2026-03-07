@@ -9,6 +9,7 @@ import Foundation
 import Combine
 import UIKit
 
+@MainActor
 final class VPNViewModel: ObservableObject {
     
     @Published private(set) var status: VPNStatus = .disconnected
@@ -35,6 +36,7 @@ final class VPNViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var selectConfigurationTask: Task<Void, Never>?
     private var connectTask: Task<Void, Never>?
+    private var configurationTask: Task<Void, Never>?
 
     init(connectUseCase: ConnectVPNUseCaseProtocol,
          disconnectUseCase: DisconnectVPNUseCaseProtocol,
@@ -64,23 +66,24 @@ final class VPNViewModel: ObservableObject {
                     break
                 }
             } catch {
-                await MainActor.run { errorMessage = error.localizedDescription }
+                errorMessage = error.localizedDescription
             }
         }
     }
-    
+
     func addConfigurationFromClipboard() {
         guard let str = UIPasteboard.general.string, str.hasPrefix("vless://") else {
             errorMessage = "В буфере обмена нет URL"
             return
         }
-        Task {
+        configurationTask?.cancel()
+        configurationTask = Task {
             do {
                 let configuration = try VlessURLParser.parse(str)
                 try await configRepository.saveConfiguration(configuration)
                 loadConfigurations()
             } catch {
-                await MainActor.run { errorMessage = error.localizedDescription }
+                errorMessage = error.localizedDescription
             }
         }
     }
@@ -90,21 +93,26 @@ final class VPNViewModel: ObservableObject {
         
         selectConfigurationTask?.cancel()
         selectConfigurationTask = Task {
-            await MainActor.run { isSwitchingConfiguration = true }
-            defer { Task { @MainActor in isSwitchingConfiguration = false } }
-            
+            isSwitchingConfiguration = true
+
             do {
                 let wasConnected = status == .connected
                 let previousConfigId = activeConfigurationId
-                
+
                 if wasConnected {
                     try await disconnectUseCase.execute()
                 }
-                guard !Task.isCancelled else { return }
-                
+                guard !Task.isCancelled else {
+                    isSwitchingConfiguration = false
+                    return
+                }
+
                 try await configRepository.setActiveConfiguration(id: id)
-                guard !Task.isCancelled else { return }
-                
+                guard !Task.isCancelled else {
+                    isSwitchingConfiguration = false
+                    return
+                }
+
                 if wasConnected {
                     do {
                         try await connectUseCase.execute()
@@ -116,26 +124,28 @@ final class VPNViewModel: ObservableObject {
                     }
                 }
             } catch {
-                await MainActor.run { errorMessage = error.localizedDescription }
+                errorMessage = error.localizedDescription
             }
+
+            isSwitchingConfiguration = false
         }
     }
 
     func loadConfigurations() {
-        Task {
+        configurationTask?.cancel()
+        configurationTask = Task {
             do {
                 let configs = try await configRepository.getAllConfigurations()
-                await MainActor.run {
-                    self.configurations = configs
-                }
+                self.configurations = configs
             } catch {
-                await MainActor.run { errorMessage = error.localizedDescription }
+                errorMessage = error.localizedDescription
             }
         }
     }
     
     func deleteConfiguration(id: String) {
-        Task {
+        configurationTask?.cancel()
+        configurationTask = Task {
             do {
                 if id == activeConfigurationId && status == .connected {
                     try await disconnectUseCase.execute()
@@ -143,11 +153,11 @@ final class VPNViewModel: ObservableObject {
                 try await configRepository.deleteConfiguration(id: id)
                 loadConfigurations()
             } catch {
-                await MainActor.run { errorMessage = error.localizedDescription }
+                errorMessage = error.localizedDescription
             }
         }
     }
-    
+
     private func setupBindings() {
         vpnService.statusPublisher
             .receive(on: DispatchQueue.main)
@@ -165,10 +175,9 @@ final class VPNViewModel: ObservableObject {
                 guard let self else { return }
                 self.refreshReconnectCount()
                 self.checkReconnectionLimit()
-                
             }
             .store(in: &cancellables)
-        
+
         configRepository.activeConfigurationPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] config in
@@ -184,16 +193,13 @@ final class VPNViewModel: ObservableObject {
     private func checkReconnectionLimit() {
         let limitReached = self.shared?.bool(forKey: AppConstants.Keys.limitReached) ?? false
         if limitReached {
-            Task {
+            Task { [weak self] in
+                guard let self else { return }
                 do {
                     try await self.disconnectUseCase.execute()
-                    await MainActor.run {
-                        self.errorMessage = "Превышен лимит переподключений. VPN отключён"
-                    }
+                    self.errorMessage = "Превышен лимит переподключений. VPN отключён"
                 } catch {
-                    await MainActor.run {
-                        self.errorMessage = error.localizedDescription
-                    }
+                    self.errorMessage = error.localizedDescription
                 }
             }
         }
@@ -204,7 +210,7 @@ final class VPNViewModel: ObservableObject {
             do {
                 try await vpnService.setup()
             } catch {
-                await MainActor.run { errorMessage = error.localizedDescription }
+                errorMessage = error.localizedDescription
             }
         }
     }

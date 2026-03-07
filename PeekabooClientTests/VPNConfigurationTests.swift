@@ -12,6 +12,7 @@ final class VPNConfigurationTests: XCTestCase {
             serverPort: port,
             userId: userId,
             encryption: "none",
+            flow: "",
             transport: .tcp,
             protocol: .vless(reality: .init(
                 publicKey: "key",

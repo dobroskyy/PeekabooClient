@@ -58,7 +58,7 @@ struct VlessURLParser {
         guard let server = url.host, !server.isEmpty else {
             throw VlessParserError.missingServer
         }
-        guard let port = url.port else {
+        guard let port = url.port, port > 0, port <= 65535 else {
             throw VlessParserError.invalidPort
         }
 
@@ -83,21 +83,22 @@ struct VlessURLParser {
         }
 
         let encryption = params["encryption"] ?? "none"
+        let flow = params["flow"] ?? ""
         let shortId = params["sid"] ?? ""
         let spiderX = params["spx"]
         let mldsa65Verify = params["pqv"]
         let transportTypeString = params["type"] ?? "tcp"
+
+        let transportPath = params["path"]
+        let transportHost = params["host"]
+        let serviceName = params["serviceName"]
 
         let name = url.fragment ?? "CONFIG"
 
         let realitySettings = VPNConfiguration.RealitySettings(publicKey: publicKey, serverName: serverName, fingerprint: fingerprint, shortId: shortId, spiderX: spiderX, mldsa65Verify: mldsa65Verify)
         let transport = VPNConfiguration.TransportType(rawValue: transportTypeString) ?? .tcp
 
-        let configuration = VPNConfiguration(id: generateStableID(from: urlString), name: name, originalURL: urlString, serverAddress: server, serverPort: port, userId: userID, encryption: encryption, transport: transport, protocol: .vless(reality: realitySettings))
-
-        guard configuration.isValid else {
-            throw VlessParserError.invalidRealityParameters
-        }
+        let configuration = VPNConfiguration(id: generateStableID(from: urlString), name: name, originalURL: urlString, serverAddress: server, serverPort: port, userId: userID, encryption: encryption, flow: flow, transport: transport, protocol: .vless(reality: realitySettings), transportPath: transportPath, transportHost: transportHost, serviceName: serviceName)
 
         return configuration
 

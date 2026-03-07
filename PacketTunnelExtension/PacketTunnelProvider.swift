@@ -90,8 +90,23 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     private func startXray(configData: Data) throws {
-        let vpnConfig = try JSONDecoder().decode(VPNConfiguration.self, from: configData)
-        let xrayJSON = try XrayConfigMapper.mapToXrayJSON(configuration: vpnConfig)
+        let vpnConfig: VPNConfiguration
+        do {
+            vpnConfig = try JSONDecoder().decode(VPNConfiguration.self, from: configData)
+        } catch {
+            throw makeError("Не удалось прочитать конфигурацию: \(error.localizedDescription)", code: -10)
+        }
+        
+        guard vpnConfig.isValid else {
+            throw makeError("Конфигурация невалидна: проверьте адрес, порт и User ID", code: -11)
+        }
+        
+        let xrayJSON: String
+        do {
+            xrayJSON = try XrayConfigMapper.mapToXrayJSON(configuration: vpnConfig)
+        } catch {
+            throw makeError("Ошибка генерации конфигурации Xray: \(error.localizedDescription)", code: -12)
+        }
         let request: [String: String] = [
             "datDir": "",
             "configJSON": xrayJSON
@@ -99,7 +114,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let requestData = try JSONEncoder().encode(request)
         let base64Request = requestData.base64EncodedString()
         let result = LibXrayRunXrayFromJSON(base64Request)
-
+        
         if !LibXrayGetXrayState() {
             throw makeError("Xray failed to start: \(result)")
         }

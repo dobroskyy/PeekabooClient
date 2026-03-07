@@ -21,6 +21,7 @@ final class XrayConfigMapperTests: XCTestCase {
             serverPort: port,
             userId: userId,
             encryption: "none",
+            flow: "",
             transport: transport,
             protocol: .vless(reality: .init(
                 publicKey: publicKey,

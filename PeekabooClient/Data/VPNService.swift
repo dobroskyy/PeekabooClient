@@ -79,78 +79,33 @@ final class VPNService: VPNServiceProtocol {
             statusSubject.send(currentStatus)
         }
     }
-}
 
-// MARK: - Helper methods
-
-extension VPNService {
-    
-    private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
-        
-        try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask {
-                try await operation()
-            }
-            
-            group.addTask {
-                try await Task.sleep(for: .seconds(seconds))
-                throw VPNError.timeout
-            }
-            
-            guard let result = try await group.next() else {
-                throw VPNError.timeout
-            }
-            group.cancelAll()
-            return result
-        }
-    }
-    
-    private func buildProtocolConfig(for configuration: VPNConfiguration) throws -> NETunnelProviderProtocol {
-        let proto = NETunnelProviderProtocol()
-        proto.providerBundleIdentifier = AppConstants.providerBundleIdentifier
-        proto.serverAddress = configuration.serverAddress
-        let data = try JSONEncoder().encode(configuration)
-        guard let str = String(data: data, encoding: .utf8) else {
-            throw VPNError.configurationInvalid
-        }
-        proto.providerConfiguration = ["config": str]
-        return proto
-    }
-    
     private func requestPermission(with configuration: VPNConfiguration) async throws {
         let newManager = NETunnelProviderManager()
-        
-        let rule = NEOnDemandRuleConnect()
-        rule.interfaceTypeMatch = .any
-        
-        let protocolConfig = try buildProtocolConfig(for: configuration)
-        newManager.protocolConfiguration = protocolConfig
         newManager.localizedDescription = AppConstants.appName
-        newManager.isEnabled = true
-        newManager.onDemandRules = [rule]
-        newManager.isOnDemandEnabled = true
-        try await newManager.saveToPreferences()
-        try await newManager.loadFromPreferences()
+        try await configureManager(newManager, with: configuration)
         self.manager = newManager
     }
-    
+
     private func updateConfiguration(with configuration: VPNConfiguration) async throws {
         guard let manager = manager else {
             throw VPNError.configurationInvalid
         }
-        
+        try await configureManager(manager, with: configuration)
+    }
+
+    private func configureManager(_ manager: NETunnelProviderManager, with configuration: VPNConfiguration) async throws {
         let rule = NEOnDemandRuleConnect()
         rule.interfaceTypeMatch = .any
-        
-        let protocolConfig = try buildProtocolConfig(for: configuration)
-        manager.protocolConfiguration = protocolConfig
+
+        manager.protocolConfiguration = try buildProtocolConfig(for: configuration)
         manager.isEnabled = true
         manager.onDemandRules = [rule]
         manager.isOnDemandEnabled = true
         try await manager.saveToPreferences()
         try await manager.loadFromPreferences()
     }
-    
+
     private func observeVPNStatusChanges() {
         NotificationCenter.default.publisher(for: .NEVPNStatusDidChange, object: nil)
             .receive(on: DispatchQueue.main)
@@ -162,7 +117,7 @@ extension VPNService {
             }
             .store(in: &cancellables)
     }
-    
+
     private func mapNEVPNStatus(_ status: NEVPNStatus) -> VPNStatus {
         switch status {
         case .invalid, .disconnected:
@@ -179,5 +134,38 @@ extension VPNService {
             return .disconnected
         }
     }
-    
+}
+
+// MARK: - Helper methods
+
+extension VPNService {
+
+    private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            group.addTask {
+                try await Task.sleep(for: .seconds(seconds))
+                throw VPNError.timeout
+            }
+            guard let result = try await group.next() else {
+                throw VPNError.timeout
+            }
+            group.cancelAll()
+            return result
+        }
+    }
+
+    private func buildProtocolConfig(for configuration: VPNConfiguration) throws -> NETunnelProviderProtocol {
+        let proto = NETunnelProviderProtocol()
+        proto.providerBundleIdentifier = AppConstants.providerBundleIdentifier
+        proto.serverAddress = configuration.serverAddress
+        let data = try JSONEncoder().encode(configuration)
+        guard let str = String(data: data, encoding: .utf8) else {
+            throw VPNError.configurationInvalid
+        }
+        proto.providerConfiguration = ["config": str]
+        return proto
+    }
 }
